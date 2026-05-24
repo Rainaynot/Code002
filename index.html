@@ -758,6 +758,20 @@ async function overpassFetch(query) {
 }
 
 async function fetchAllAreasInBengaluru(geojson) {
+  // Persistent cache — Overpass takes 5-15s; remember the result so the
+  // next session paints suburbs instantly.
+  const LS_AREAS_KEY = 'pzm_all_areas_v1';
+  const TTL_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
+  try {
+    const raw = localStorage.getItem(LS_AREAS_KEY);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (cached && Array.isArray(cached.items) && (Date.now() - (cached.t || 0)) < TTL_MS) {
+        return cached.items;
+      }
+    }
+  } catch(e) { /* ignore */ }
+
   const polyStr = geojsonToOverpassPoly(geojson);
   if (!polyStr) return [];
   // Tighter, faster query: just point-tagged suburbs / neighbourhoods / quarters
@@ -769,9 +783,11 @@ async function fetchAllAreasInBengaluru(geojson) {
 );
 out tags 1200;`;
   const data = await overpassFetch(q);
-  return (data.elements||[]).filter(e => e.tags && e.tags.name).map(e => ({
+  const items = (data.elements||[]).filter(e => e.tags && e.tags.name).map(e => ({
     lat:e.lat, lng:e.lon, name:e.tags.name, place:e.tags.place, postcode:e.tags['addr:postcode']
   }));
+  try { localStorage.setItem(LS_AREAS_KEY, JSON.stringify({ t: Date.now(), items })); } catch(e) {}
+  return items;
 }
 
 /* ---------- Stats ---------- */
@@ -1208,62 +1224,82 @@ function buildCardinalZones() {
 /* Build a real cardinal zone outline by unioning every pincode polygon
    belonging to that zone (per PINCODE_AREAS). */
 const cardinalRealCache = {}; // 'C'|'N'|'E'|'S'|'W' -> GeoJSON geometry
-async function getRealCardinalZone(key) {
+const cardinalInflight = {};  // de-dup concurrent calls for the same key
+async function getRealCardinalZone(key, { silent = false } = {}) {
   if (cardinalRealCache[key]) return cardinalRealCache[key];
+  if (cardinalInflight[key])  return cardinalInflight[key];
   const pincodes = Object.entries(PINCODE_AREAS)
     .filter(([,info]) => info.zone === key)
     .map(([p]) => p);
   if (!pincodes.length) return null;
 
-  let union = null;
-  let okCount = 0, failCount = 0, done = 0;
-  for (const p of pincodes) {
-    try {
-      const res = await fetchPincodeBoundary(p);
-      if (res && res.geojson && (res.geojson.type === 'Polygon' || res.geojson.type === 'MultiPolygon')) {
-        const f = turf.feature(res.geojson);
-        if (!union) { union = f; okCount++; }
-        else {
-          try { union = turf.union(union, f) || union; okCount++; }
-          catch(unionErr) { console.warn('union failed at', p, unionErr); failCount++; }
+  const work = (async () => {
+    let union = null;
+    let okCount = 0, failCount = 0, done = 0;
+    for (const p of pincodes) {
+      try {
+        const res = await fetchPincodeBoundary(p);
+        if (res && res.geojson && (res.geojson.type === 'Polygon' || res.geojson.type === 'MultiPolygon')) {
+          const f = turf.feature(res.geojson);
+          if (!union) { union = f; okCount++; }
+          else {
+            try { union = turf.union(union, f) || union; okCount++; }
+            catch(unionErr) { console.warn('union failed at', p, unionErr); failCount++; }
+          }
+        } else { failCount++; }
+      } catch(e) { failCount++; console.warn('boundary failed at', p, e); }
+      done++;
+      if (!silent) showLoading(`${ZONE_META[key].name} zone… ${done}/${pincodes.length} pincodes (${okCount} ok)`);
+      // Polite rate-limit to Nominatim — its public policy is ~1 req/sec.
+      // Use 350ms which is a fair compromise for responsiveness.
+      // Skip the wait entirely when the next pincode is already cached
+      // (no network call needed) so re-toggles after prewarm are instant.
+      if (done < pincodes.length) {
+        const next = pincodes[done];
+        if (!boundaryCache.has(next)) {
+          await new Promise(r => setTimeout(r, 350));
         }
-      } else { failCount++; }
-    } catch(e) { failCount++; console.warn('boundary failed at', p, e); }
-    done++;
-    showLoading(`${ZONE_META[key].name} zone… ${done}/${pincodes.length} pincodes (${okCount} ok)`);
-    // Polite rate-limit to Nominatim — its public policy is ~1 req/sec.
-    // Use 350ms which is a fair compromise for responsiveness.
-    if (done < pincodes.length) await new Promise(r => setTimeout(r, 350));
-  }
-  if (!union || okCount < 3) {
-    console.warn(`Cardinal zone ${key}: only ${okCount}/${pincodes.length} polygons loaded — falling back`);
-    return null;
-  }
-  // Clip to the city polygon so the outline hugs Bengaluru
-  let clipped;
-  try { clipped = turf.intersect(union, turf.feature(bengaluruGeo)); } catch(e) { clipped = null; }
-  cardinalRealCache[key] = (clipped ? clipped.geometry : union.geometry);
-  return cardinalRealCache[key];
+      }
+    }
+    if (!union || okCount < 3) {
+      console.warn(`Cardinal zone ${key}: only ${okCount}/${pincodes.length} polygons loaded — falling back`);
+      cardinalInflight[key] = null;
+      return null;
+    }
+    // Clip to the city polygon so the outline hugs Bengaluru
+    let clipped;
+    try { clipped = turf.intersect(union, turf.feature(bengaluruGeo)); } catch(e) { clipped = null; }
+    cardinalRealCache[key] = (clipped ? clipped.geometry : union.geometry);
+    cardinalInflight[key] = null;
+    return cardinalRealCache[key];
+  })();
+  cardinalInflight[key] = work;
+  return work;
 }
 
 let cardinalZonesGeo = null; // wedge fallback set
 async function showCardinalZone(key, on) {
   if (on) {
     if (cardinalLayers[key]) return;
-    showLoading(`Loading ${ZONE_META[key].name} zone boundary…`);
-    let geom = null;
-    try { geom = await getRealCardinalZone(key); } catch(e) { console.error(e); }
+    // If the prewarm already built this zone, skip the loading flash and
+    // resolve straight from cache for an instant toggle.
+    const cached = cardinalRealCache[key] || null;
+    let geom = cached;
+    if (!cached) {
+      showLoading(`Loading ${ZONE_META[key].name} zone boundary…`);
+      try { geom = await getRealCardinalZone(key); } catch(e) { console.error(e); }
+    }
     if (!geom) {
       if (!cardinalZonesGeo) cardinalZonesGeo = buildCardinalZones();
       const wedge = cardinalZonesGeo[key];
       geom = wedge && (wedge.geometry || wedge);
       toast(`Using approximate sector for ${ZONE_META[key].name} (real polygons unavailable)`, 'warn');
-    } else {
+    } else if (!cached) {
       toast(`${ZONE_META[key].name} zone built from real pincode boundaries`, 'success', 2500);
     }
-    hideLoading();
+    if (!cached) hideLoading();
     if (!geom) return;
-    const colors = { C:getCSS('--zC'), N:getCSS('--zN'), S:getCSS('--zS'), E:getCSS('--zE'), W:getCSS('--zW') };
+    const colors = ZONE_COLORS;
     const labels = { C:'Central', N:'North', S:'South', E:'East', W:'West' };
     const lyr = L.geoJSON(geom, { style:{ color:colors[key], weight:2.5, fillOpacity:0.14, fillColor:colors[key] } }).addTo(map);
     try {
@@ -1613,12 +1649,16 @@ $('#tglBengaluru').addEventListener('change', e => {
 
 $('#tglAllZones').addEventListener('change', async e => {
   const on = e.target.checked;
-  // Sequentially load each zone so Nominatim isn't slammed with 5 parallel batches.
-  for (const k of ['C','N','S','E','W']) {
+  // Reflect the toggle state on each child checkbox immediately so the UI
+  // feels instant; the actual layer build happens in parallel below.
+  ['C','N','S','E','W'].forEach(k => {
     const cb = document.querySelector(`.zoneToggle[data-zone="${k}"]`);
-    cb.checked = on;
-    await showCardinalZone(k, on);
-  }
+    if (cb) cb.checked = on;
+  });
+  // Parallel build/teardown — once the prewarm has populated the cache
+  // every zone resolves instantly. When it hasn't, the slowest zone is
+  // the only bottleneck instead of the sum of all five.
+  await Promise.all(['C','N','S','E','W'].map(k => showCardinalZone(k, on)));
 });
 $$('.zoneToggle').forEach(cb => cb.addEventListener('change', async e => {
   await showCardinalZone(e.target.dataset.zone, e.target.checked);
@@ -1673,17 +1713,61 @@ const ALL_LOCALITIES = (() => {
   return arr;
 })();
 
+/* ---------- Performance pre-computations ----------
+   Resolve zone colors ONCE (so we never call getComputedStyle inside a .map()
+   loop per row), and pre-sort/pre-bucket the lists the BZM tabs render so
+   every tab/filter switch is just a cheap filter+innerHTML assignment. */
+const ZONE_COLORS = (() => {
+  const cs = getComputedStyle(document.documentElement);
+  const pick = (v, fb) => (cs.getPropertyValue(v).trim() || fb);
+  return {
+    C: pick('--zC', '#ffb74c'),
+    N: pick('--zN', '#60a5fa'),
+    E: pick('--zE', '#34d399'),
+    S: pick('--zS', '#a78bfa'),
+    W: pick('--zW', '#fbbf24')
+  };
+})();
+
 /* Pre-grouped pincodes by zone for the Zones tab */
-function pincodesByZone(zoneKey) {
-  return Object.keys(PINCODE_AREAS).filter(p => PINCODE_AREAS[p].zone === zoneKey).sort();
-}
+const PINCODES_BY_ZONE_CACHE = (() => {
+  const out = { ALL: Object.keys(PINCODE_AREAS).sort() };
+  for (const k of ZONE_ORDER) {
+    out[k] = Object.keys(PINCODE_AREAS).filter(p => PINCODE_AREAS[p].zone === k).sort();
+  }
+  return out;
+})();
+function pincodesByZone(zoneKey) { return PINCODES_BY_ZONE_CACHE[zoneKey] || []; }
+
+/* Localities pre-bucketed by zone and pre-sorted by name for the Areas tab */
+const LOCALITIES_BY_ZONE_SORTED = (() => {
+  const byName = (a, b) => a.name.localeCompare(b.name);
+  const all = [...ALL_LOCALITIES].sort(byName);
+  const out = { ALL: all };
+  for (const k of ZONE_ORDER) {
+    out[k] = ALL_LOCALITIES.filter(l => l.zone === k).sort(byName);
+  }
+  return out;
+})();
+
+/* Pincode rows pre-bucketed by zone and pre-sorted for the Pincodes tab */
+const PINCODE_ROWS_BY_ZONE_SORTED = (() => {
+  const allRows = Object.entries(PINCODE_AREAS).map(([pin, info]) => ({
+    pincode: pin, zone: info.zone, main: info.main, areaCount: 1 + (info.sub || []).length
+  }));
+  const byPin = (a, b) => a.pincode.localeCompare(b.pincode);
+  const out = { ALL: [...allRows].sort(byPin) };
+  for (const k of ZONE_ORDER) {
+    out[k] = allRows.filter(r => r.zone === k).sort(byPin);
+  }
+  return out;
+})();
 
 /* ---------- Stats card numbers ---------- */
 function refreshBzmStats() {
   const filter = bzmState.zoneFilter;
-  const matchZone = z => filter === 'ALL' || z === filter;
-  const pincodes = Object.keys(PINCODE_AREAS).filter(p => matchZone(PINCODE_AREAS[p].zone));
-  const areas = ALL_LOCALITIES.filter(l => matchZone(l.zone));
+  const pincodes = PINCODES_BY_ZONE_CACHE[filter] || PINCODES_BY_ZONE_CACHE.ALL;
+  const areas    = LOCALITIES_BY_ZONE_SORTED[filter] || LOCALITIES_BY_ZONE_SORTED.ALL;
   // "Localities" in the subtitle = top-level localities (1 per pincode), so the
   // visible number stays stable with the static "116 localities" placeholder
   // instead of jumping to the inflated main+sub total.
@@ -1717,9 +1801,9 @@ function renderBzmZonesTab() {
 
   list.innerHTML = filtered.map(k => {
     const meta = ZONE_META[k];
-    const color = getCSS(meta.cssVar);
+    const color = ZONE_COLORS[k];
     const pins = pincodesByZone(k);
-    const areaList = ALL_LOCALITIES.filter(l => l.zone === k);
+    const areaList = LOCALITIES_BY_ZONE_SORTED[k];
     const previewPins = pins.slice(0, 6);
     const morePins = pins.length - previewPins.length;
     const previewAreas = areaList.slice(0, 6).map(a => a.name);
@@ -1746,11 +1830,7 @@ function renderBzmZonesTab() {
       </div>
     `;
   }).join('');
-
-  // Click a zone card -> set filter to that zone (and stay on Zones tab)
-  list.querySelectorAll('.bzm-zone-card').forEach(card => {
-    card.addEventListener('click', () => setBzmZoneFilter(card.dataset.zone));
-  });
+  // Click delegation is wired once on #bzmList — see bzmListClickHandler.
 }
 
 function renderBzmAreasTab() {
@@ -1758,7 +1838,8 @@ function renderBzmAreasTab() {
   const filter = bzmState.zoneFilter;
   const q = bzmState.search.toLowerCase().trim();
 
-  let items = ALL_LOCALITIES.filter(l => filter === 'ALL' || l.zone === filter);
+  // Pre-sorted, pre-bucketed list — no per-render sort or full-set filter.
+  let items = LOCALITIES_BY_ZONE_SORTED[filter] || LOCALITIES_BY_ZONE_SORTED.ALL;
   if (q) {
     items = items.filter(l =>
       l.name.toLowerCase().includes(q) ||
@@ -1766,7 +1847,6 @@ function renderBzmAreasTab() {
       ZONE_META[l.zone].name.toLowerCase().includes(q)
     );
   }
-  items.sort((a, b) => a.name.localeCompare(b.name));
 
   if (items.length === 0) {
     list.innerHTML = '<div class="empty">No areas match your search.</div>';
@@ -1778,7 +1858,7 @@ function renderBzmAreasTab() {
   const shown = items.slice(0, MAX);
 
   list.innerHTML = shown.map(l => {
-    const color = getCSS(ZONE_META[l.zone].cssVar);
+    const color = ZONE_COLORS[l.zone];
     return `
       <div class="bzm-row" data-zone="${l.zone}" data-pin="${l.pincode}">
         <span class="rdot" style="background:${color};color:${color}"></span>
@@ -1790,10 +1870,6 @@ function renderBzmAreasTab() {
       </div>
     `;
   }).join('') + (items.length > MAX ? `<div class="empty">Showing ${MAX} of ${items.length}. Refine your search to see more.</div>` : '');
-
-  list.querySelectorAll('.bzm-row').forEach(row => {
-    row.addEventListener('click', () => setBzmZoneFilter(row.dataset.zone));
-  });
 }
 
 function renderBzmPincodesTab() {
@@ -1801,10 +1877,7 @@ function renderBzmPincodesTab() {
   const filter = bzmState.zoneFilter;
   const q = bzmState.search.toLowerCase().trim();
 
-  let items = Object.entries(PINCODE_AREAS).map(([pin, info]) => ({
-    pincode: pin, zone: info.zone, main: info.main, areaCount: 1 + (info.sub||[]).length
-  }));
-  items = items.filter(it => filter === 'ALL' || it.zone === filter);
+  let items = PINCODE_ROWS_BY_ZONE_SORTED[filter] || PINCODE_ROWS_BY_ZONE_SORTED.ALL;
   if (q) {
     items = items.filter(it =>
       it.pincode.includes(q) ||
@@ -1812,7 +1885,6 @@ function renderBzmPincodesTab() {
       ZONE_META[it.zone].name.toLowerCase().includes(q)
     );
   }
-  items.sort((a, b) => a.pincode.localeCompare(b.pincode));
 
   if (items.length === 0) {
     list.innerHTML = '<div class="empty">No pincodes match your search.</div>';
@@ -1820,9 +1892,9 @@ function renderBzmPincodesTab() {
   }
 
   list.innerHTML = items.map(it => {
-    const color = getCSS(ZONE_META[it.zone].cssVar);
+    const color = ZONE_COLORS[it.zone];
     return `
-      <div class="bzm-row" data-zone="${it.zone}" data-pin="${it.pincode}">
+      <div class="bzm-row" data-zone="${it.zone}" data-pin="${it.pincode}" data-kind="pincode">
         <span class="rdot" style="background:${color};color:${color}"></span>
         <div class="rmain">
           <div class="rname">${it.pincode}</div>
@@ -1832,15 +1904,7 @@ function renderBzmPincodesTab() {
       </div>
     `;
   }).join('');
-
-  list.querySelectorAll('.bzm-row').forEach(row => {
-    row.addEventListener('click', () => {
-      // Auto-select related zone, and offer to add this pincode as a custom zone
-      setBzmZoneFilter(row.dataset.zone);
-      $('#pinInput').value = row.dataset.pin;
-      $('#pinInput').focus();
-    });
-  });
+  // Click delegation is wired once on #bzmList — see bzmListClickHandler.
 }
 
 function renderBzm() {
@@ -1880,9 +1944,31 @@ $$('.bzm-chip').forEach(chip => {
 $$('.bzm-tab').forEach(tab => {
   tab.addEventListener('click', () => setBzmTab(tab.dataset.tab));
 });
+
+/* Single delegated click handler for the BZM list — attached ONCE,
+   so each tab/filter re-render is just an innerHTML swap (no per-row
+   addEventListener loops). */
+$('#bzmList').addEventListener('click', (ev) => {
+  const card = ev.target.closest('.bzm-zone-card');
+  if (card) { setBzmZoneFilter(card.dataset.zone); return; }
+  const row = ev.target.closest('.bzm-row');
+  if (!row) return;
+  setBzmZoneFilter(row.dataset.zone);
+  if (row.dataset.kind === 'pincode' && row.dataset.pin) {
+    const pinInput = $('#pinInput');
+    if (pinInput) { pinInput.value = row.dataset.pin; pinInput.focus(); }
+  }
+});
+
+/* Debounced search — typing no longer triggers a render on every keystroke. */
+let bzmSearchTimer = null;
 $('#bzmSearch').addEventListener('input', e => {
-  bzmState.search = e.target.value;
-  renderBzm();
+  const v = e.target.value;
+  clearTimeout(bzmSearchTimer);
+  bzmSearchTimer = setTimeout(() => {
+    bzmState.search = v;
+    renderBzm();
+  }, 90);
 });
 
 // Initial render — happens after CSS variables are loaded by the document
@@ -1890,15 +1976,41 @@ renderBzm();
 
 /* ---------- Init ---------- */
 (async () => {
-  showLoading('Loading Bengaluru boundary…');
-  bengaluruGeo = await fetchBengaluruBoundary();
+  // Show the Bengaluru outline IMMEDIATELY from the bundled fallback polygon
+  // so the map looks done in <50ms. Nominatim's real polygon then quietly
+  // upgrades the outline in the background once it arrives.
+  bengaluruGeo = BENGALURU_FALLBACK;
   bengaluruLayer = L.geoJSON(bengaluruGeo, {
     style:{ color:'#4cc9ff', weight:2, fillOpacity:0.04, fillColor:'#4cc9ff', dashArray:'2 4' },
     interactive:false
   }).addTo(map);
   map.fitBounds(bengaluruLayer.getBounds(), { padding:[20,20] });
-  hideLoading();
   toast('Tip: try pincode 560032 (RT Nagar), 560094 (Sanjaynagar), or click anywhere on the map.', 'info', 6000);
+
+  // Background: upgrade to the real OSM boundary if/when Nominatim responds.
+  fetchBengaluruBoundary().then(real => {
+    if (!real || real === BENGALURU_FALLBACK) return;
+    bengaluruGeo = real;
+    const wasVisible = bengaluruLayer && map.hasLayer(bengaluruLayer);
+    if (bengaluruLayer) map.removeLayer(bengaluruLayer);
+    bengaluruLayer = L.geoJSON(bengaluruGeo, {
+      style:{ color:'#4cc9ff', weight:2, fillOpacity:0.04, fillColor:'#4cc9ff', dashArray:'2 4' },
+      interactive:false
+    });
+    if (wasVisible || $('#tglBengaluru').checked) bengaluruLayer.addTo(map);
+  }).catch(()=>{});
+
+  // Background: pre-warm cardinal zone polygons so the user's first toggle
+  // is instant. Runs sequentially with a small delay between zones to be
+  // polite to Nominatim's 1 req/sec policy. Anything already cached in
+  // localStorage is hit instantly inside getRealCardinalZone().
+  setTimeout(() => {
+    (async () => {
+      for (const k of ZONE_ORDER) {
+        try { await getRealCardinalZone(k, { silent: true }); } catch(e) { /* ignore */ }
+      }
+    })();
+  }, 1500);
 })();
 </script>
 </body>
