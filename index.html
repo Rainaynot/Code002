@@ -1497,10 +1497,14 @@ function refreshBzmStats() {
   const matchZone = z => filter === 'ALL' || z === filter;
   const pincodes = Object.keys(PINCODE_AREAS).filter(p => matchZone(PINCODE_AREAS[p].zone));
   const areas = ALL_LOCALITIES.filter(l => matchZone(l.zone));
+  // "Localities" in the subtitle = top-level localities (1 per pincode), so the
+  // visible number stays stable with the static "116 localities" placeholder
+  // instead of jumping to the inflated main+sub total.
+  const localities = pincodes.length;
   $('#statPincodes').textContent = pincodes.length;
   $('#statAreas').textContent = areas.length;
   $('#statZones').textContent = filter === 'ALL' ? ZONE_ORDER.length : 1;
-  $('#bzmSub').innerHTML = `${areas.length} localities &bull; ${filter==='ALL' ? '5 zones' : ZONE_META[filter].name + ' zone'} &bull; Draw custom zones`;
+  $('#bzmSub').innerHTML = `${localities} localities &bull; ${filter==='ALL' ? '5 zones' : ZONE_META[filter].name + ' zone'} &bull; Draw custom zones`;
 }
 
 /* ---------- Renderers ---------- */
