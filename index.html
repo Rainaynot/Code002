@@ -32,7 +32,7 @@
     <div class="topbar-stats">
       <div class="stat"><span id="stat-zones">5</span><label>Main Zones</label></div>
       <div class="stat"><span id="stat-pincodes">0</span><label>Pincodes</label></div>
-      <div class="stat"><span id="stat-custom">0</span><label>Custom Sub-zones</label></div>
+      <div class="stat"><span id="stat-custom">0</span><label>Sub-zones</label></div>
       <div class="stat"><span id="stat-area">0</span><label>Total km²</label></div>
     </div>
 
@@ -50,63 +50,100 @@
     <aside class="sidebar">
 
       <nav class="tabs">
-        <button class="tab active" data-tab="zones">Zones</button>
-        <button class="tab" data-tab="pincodes">Pincodes</button>
-        <button class="tab" data-tab="create">Create</button>
-        <button class="tab" data-tab="combine">Combine</button>
+        <button class="tab active" data-tab="main">
+          <span class="tab-icon">●</span> Main Zones
+        </button>
+        <button class="tab" data-tab="sub">
+          <span class="tab-icon">◆</span> Sub Zones
+        </button>
+        <button class="tab" data-tab="pincodes">
+          <span class="tab-icon">▦</span> Pincodes
+        </button>
+        <button class="tab" data-tab="combine">
+          <span class="tab-icon">⊕</span> Combine
+        </button>
       </nav>
 
-      <!-- TAB: Zones -->
-      <section class="tab-panel active" data-panel="zones">
-        <h3>Main Zones</h3>
-        <p class="muted">Click a zone to highlight on the map.</p>
+      <!-- =================== TAB: MAIN ZONES =================== -->
+      <section class="tab-panel active" data-panel="main">
+        <div class="panel-header">
+          <h3>Main Zones</h3>
+          <span class="badge badge-primary" id="main-zone-count">5</span>
+        </div>
+        <p class="muted">The 5 default geographic zones of Bengaluru. Click any zone to highlight it and see its pincodes.</p>
         <ul id="zone-list" class="zone-list"></ul>
+      </section>
 
-        <h3 style="margin-top:18px">Custom Sub-zones</h3>
+      <!-- =================== TAB: SUB ZONES =================== -->
+      <section class="tab-panel" data-panel="sub">
+        <div class="panel-header">
+          <h3>Sub Zones <span class="muted-inline">(custom)</span></h3>
+          <span class="badge badge-accent" id="sub-zone-count">0</span>
+        </div>
+
+        <!-- Create / Edit form -->
+        <div class="card">
+          <div class="card-title" id="sub-form-title">Create new sub-zone</div>
+
+          <label>Zone name</label>
+          <input id="new-zone-name" type="text" class="input" placeholder="e.g. RT Nagar Hub" />
+
+          <label>Zone color</label>
+          <div class="color-palette" id="color-palette"></div>
+          <input id="new-zone-color" type="color" class="input input-color" value="#06b6d4" />
+
+          <label>Select pincodes</label>
+          <input id="create-search" type="text" class="input" placeholder="Filter by pincode or area..." />
+          <div class="selection-summary">
+            <span id="selection-count">0</span> selected
+            <button class="link-btn" id="btn-select-all">select all visible</button>
+            <button class="link-btn" id="btn-deselect-all">clear</button>
+          </div>
+          <ul id="create-pincode-list" class="pincode-list checkbox-list scroll-list"></ul>
+
+          <div class="form-actions">
+            <button id="btn-create-zone" class="btn btn-primary">Create Sub-zone</button>
+            <button id="btn-cancel-edit" class="btn btn-ghost hidden">Cancel</button>
+          </div>
+        </div>
+
+        <!-- List of created sub-zones -->
+        <div class="panel-header" style="margin-top:18px">
+          <h3>Your Sub Zones</h3>
+        </div>
         <ul id="custom-zone-list" class="zone-list">
-          <li class="empty">No custom zones yet. Create one in the Create tab.</li>
+          <li class="empty">No sub-zones yet. Create one above.</li>
         </ul>
       </section>
 
-      <!-- TAB: Pincodes -->
+      <!-- =================== TAB: PINCODES =================== -->
       <section class="tab-panel" data-panel="pincodes">
-        <h3>Search Pincodes / Areas</h3>
-        <input id="pincode-search" type="text" class="input" placeholder="Search pincode or area name..." />
-        <div class="filter-row">
-          <select id="pincode-zone-filter" class="input">
-            <option value="">All zones</option>
-          </select>
+        <div class="panel-header">
+          <h3>Pincodes &amp; Areas</h3>
+          <span class="badge" id="pincode-count">0</span>
         </div>
-        <ul id="pincode-list" class="pincode-list"></ul>
+        <input id="pincode-search" type="text" class="input" placeholder="Search by pincode or area name..." />
+        <select id="pincode-zone-filter" class="input" style="margin-top:8px">
+          <option value="">All zones</option>
+        </select>
+        <ul id="pincode-list" class="pincode-list scroll-list"></ul>
       </section>
 
-      <!-- TAB: Create Zone -->
-      <section class="tab-panel" data-panel="create">
-        <h3>Create Custom Sub-zone</h3>
-        <p class="muted">Pick pincodes from the list, give the zone a name, then save.</p>
-
-        <label>Zone Name</label>
-        <input id="new-zone-name" type="text" class="input" placeholder="e.g. RT Nagar Hub" />
-
-        <label>Zone Color</label>
-        <input id="new-zone-color" type="color" class="input" value="#06b6d4" />
-
-        <label>Search pincodes</label>
-        <input id="create-search" type="text" class="input" placeholder="Filter by pincode/area..." />
-
-        <ul id="create-pincode-list" class="pincode-list checkbox-list"></ul>
-
-        <div class="form-actions">
-          <button id="btn-create-zone" class="btn btn-primary">Create Zone</button>
-          <button id="btn-clear-create" class="btn btn-ghost">Clear</button>
-        </div>
-      </section>
-
-      <!-- TAB: Combine Zones -->
+      <!-- =================== TAB: COMBINE =================== -->
       <section class="tab-panel" data-panel="combine">
-        <h3>Combine Zones</h3>
-        <p class="muted">Select two or more zones (main or custom) to view combined coverage and total km.</p>
-        <ul id="combine-zone-list" class="zone-list checkbox-list"></ul>
+        <div class="panel-header">
+          <h3>Combine Zones</h3>
+        </div>
+        <p class="muted">Mix &amp; match any main zones and sub-zones to view their combined coverage and total km.</p>
+
+        <h4 class="section-label">Main zones</h4>
+        <ul id="combine-main-list" class="zone-list checkbox-list"></ul>
+
+        <h4 class="section-label">Sub zones</h4>
+        <ul id="combine-sub-list" class="zone-list checkbox-list">
+          <li class="empty">No sub-zones to combine yet.</li>
+        </ul>
+
         <div class="form-actions">
           <button id="btn-combine"       class="btn btn-primary">Combine &amp; Show</button>
           <button id="btn-clear-combine" class="btn btn-ghost">Clear</button>
@@ -122,7 +159,8 @@
     <!-- ======= RIGHT INFO PANEL ======= -->
     <aside id="info-panel" class="info-panel">
       <div class="info-empty">
-        <p class="muted">Click any pincode or zone on the map to see details here.</p>
+        <div class="info-empty-icon">⊕</div>
+        <p class="muted">Click any zone or pincode on the map (or in the sidebar) to see details here.</p>
       </div>
     </aside>
 

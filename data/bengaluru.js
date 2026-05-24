@@ -1,40 +1,62 @@
 // Bengaluru Zone Manager - Geographic Data
-// Boundary: approximate BBMP / Greater Bengaluru polygon outline (irregular, real-shape inspired)
-// Pincodes: ~95 active Bengaluru pincodes with area name + approx centroid + main zone
+// Boundary: ~75-vertex polygon approximating real BBMP / Greater Bengaluru shape
+// Pincodes: 116 active Bengaluru pincodes (560001-560117 range)
 
-// Bengaluru outer boundary polygon (clockwise) - irregular, NOT a circle/rectangle
+// ===== Bengaluru outer boundary polygon =====
 // Coordinates as [lng, lat] (GeoJSON convention)
+// Drawn clockwise starting from the north (Yelahanka). Real-world irregular shape:
+// - Northeast bulge: KIA airport approach / Hennur / Bagalur
+// - East lobe: Whitefield / Hoskote border (extends furthest east)
+// - South tail: Electronic City / Bommasandra (extends furthest south)
+// - West edge: Kengeri / Mysore Road
+// - Northwest: Peenya / Tumkur Road / Nelamangala border
 const BENGALURU_BOUNDARY = {
   type: "Feature",
   properties: { name: "Bengaluru" },
   geometry: {
     type: "Polygon",
     coordinates: [[
-      // North - Yelahanka / airport-side bulge
-      [77.585, 13.165], [77.605, 13.160], [77.625, 13.150], [77.645, 13.135],
-      // North-east - Hennur / Hoskote direction
-      [77.670, 13.115], [77.695, 13.090], [77.715, 13.060], [77.735, 13.030],
-      // East - Whitefield bulge (extends further east)
-      [77.760, 13.005], [77.778, 12.985], [77.785, 12.960], [77.778, 12.935],
-      // South-east - Electronic City corridor (extends south)
-      [77.755, 12.910], [77.730, 12.880], [77.705, 12.850], [77.685, 12.820],
-      // South - Bommasandra / Anekal border
-      [77.660, 12.805], [77.630, 12.810], [77.600, 12.825], [77.575, 12.840],
-      // South-west - Bannerghatta / Kanakapura side
-      [77.545, 12.855], [77.515, 12.870], [77.490, 12.885],
-      // West - Kengeri / Mysore Road extends west
-      [77.465, 12.905], [77.450, 12.930], [77.450, 12.955], [77.460, 12.980],
-      // North-west - Peenya / Tumkur Road
-      [77.480, 13.010], [77.495, 13.040], [77.510, 13.075], [77.525, 13.105],
-      // Back up north
-      [77.545, 13.130], [77.560, 13.145], [77.575, 13.158],
-      // Close
-      [77.585, 13.165]
+      // ===== NORTH (Yelahanka / Jakkur) =====
+      [77.578, 13.158], [77.585, 13.165], [77.595, 13.170], [77.608, 13.168],
+      [77.618, 13.162], [77.625, 13.155],
+      // ===== NORTHEAST (Bagalur / Hennur / KIA approach) =====
+      [77.638, 13.150], [77.652, 13.145], [77.665, 13.135], [77.675, 13.118],
+      [77.682, 13.098], [77.688, 13.078], [77.692, 13.058], [77.698, 13.040],
+      // ===== EAST UPPER (KR Puram / Hoodi) =====
+      [77.708, 13.022], [77.722, 13.008], [77.738, 12.998], [77.752, 12.992],
+      // ===== EAST BULGE (Whitefield / ITPL) - extends furthest east =====
+      [77.765, 12.985], [77.775, 12.975], [77.782, 12.962], [77.785, 12.948],
+      [77.782, 12.935], [77.775, 12.922], [77.768, 12.910],
+      // ===== SOUTHEAST (Sarjapur Road / Bellandur / Bommanahalli) =====
+      [77.755, 12.898], [77.738, 12.888], [77.720, 12.878], [77.708, 12.865],
+      // ===== SOUTH TAIL (Electronic City corridor) - extends furthest south =====
+      [77.700, 12.848], [77.695, 12.828], [77.692, 12.808], [77.688, 12.795],
+      [77.680, 12.788], [77.668, 12.792], [77.658, 12.802],
+      // ===== SOUTH (Anekal / Bommasandra direction) =====
+      [77.648, 12.815], [77.635, 12.820], [77.620, 12.822], [77.605, 12.828],
+      [77.590, 12.835], [77.575, 12.842],
+      // ===== SOUTHWEST (Bannerghatta / Hulimavu / JP Nagar 9) =====
+      [77.560, 12.852], [77.548, 12.862], [77.535, 12.870], [77.520, 12.875],
+      [77.508, 12.882],
+      // ===== WEST (Kanakapura Road / Subramanyapura / Uttarahalli) =====
+      [77.495, 12.890], [77.482, 12.898], [77.470, 12.908], [77.460, 12.920],
+      // ===== WEST EDGE (Kengeri / Mysore Road) - extends furthest west =====
+      [77.452, 12.935], [77.448, 12.952], [77.450, 12.968], [77.455, 12.982],
+      [77.462, 12.995],
+      // ===== NORTHWEST (Magadi Road / Sunkadakatte) =====
+      [77.470, 13.008], [77.478, 13.020], [77.485, 13.032], [77.490, 13.045],
+      // ===== NORTHWEST (Peenya / Tumkur Road / Nelamangala border) =====
+      [77.495, 13.058], [77.498, 13.072], [77.500, 13.085], [77.505, 13.098],
+      // ===== NORTH-NORTHWEST (Bagalakunte / Chikkabanavara / Hesaraghatta) =====
+      [77.510, 13.110], [77.515, 13.122], [77.522, 13.132], [77.532, 13.140],
+      [77.542, 13.146], [77.552, 13.152], [77.562, 13.156], [77.572, 13.158],
+      // ===== Close ring =====
+      [77.578, 13.158]
     ]]
   }
 };
 
-// Five main zones - macro grouping
+// ===== Five main zones =====
 const MAIN_ZONES = [
   { id: "central", name: "Central Zone", color: "#f59e0b" },
   { id: "north",   name: "North Zone",   color: "#3b82f6" },
@@ -43,9 +65,16 @@ const MAIN_ZONES = [
   { id: "west",    name: "West Zone",    color: "#a855f7" }
 ];
 
-// Pincode dataset - {code, area, lat, lng, zone}
+// ===== Color presets for sub-zones (12 swatches) =====
+const ZONE_COLOR_PRESETS = [
+  "#06b6d4", "#0ea5e9", "#3b82f6", "#6366f1",
+  "#8b5cf6", "#a855f7", "#ec4899", "#f43f5e",
+  "#f97316", "#eab308", "#84cc16", "#14b8a6"
+];
+
+// ===== Pincode dataset (116 entries) =====
 const PINCODES = [
-  // ---------- CENTRAL ----------
+  // ---------- CENTRAL (17) ----------
   { code: "560001", area: "Bangalore GPO",          lat: 12.9776, lng: 77.5713, zone: "central" },
   { code: "560002", area: "Chickpet",               lat: 12.9684, lng: 77.5750, zone: "central" },
   { code: "560009", area: "Bangalore City",         lat: 12.9750, lng: 77.5700, zone: "central" },
@@ -55,6 +84,7 @@ const PINCODES = [
   { code: "560025", area: "Richmond Town",          lat: 12.9620, lng: 77.6000, zone: "central" },
   { code: "560027", area: "Shanti Nagar",           lat: 12.9580, lng: 77.6000, zone: "central" },
   { code: "560030", area: "K. G. Road",             lat: 12.9760, lng: 77.5800, zone: "central" },
+  { code: "560031", area: "Benson Town",            lat: 12.9990, lng: 77.6110, zone: "central" },
   { code: "560042", area: "M. G. Road",             lat: 12.9750, lng: 77.6080, zone: "central" },
   { code: "560047", area: "Wilson Garden",          lat: 12.9550, lng: 77.5950, zone: "central" },
   { code: "560051", area: "Halasuru (Ulsoor)",      lat: 12.9810, lng: 77.6230, zone: "central" },
@@ -63,7 +93,7 @@ const PINCODES = [
   { code: "560055", area: "Vasanth Nagar",          lat: 12.9890, lng: 77.5950, zone: "central" },
   { code: "560084", area: "Bharathi Nagar",         lat: 12.9870, lng: 77.6160, zone: "central" },
 
-  // ---------- NORTH ----------
+  // ---------- NORTH (25) ----------
   { code: "560003", area: "Malleswaram",            lat: 13.0030, lng: 77.5640, zone: "north" },
   { code: "560007", area: "Hebbal",                 lat: 13.0350, lng: 77.5970, zone: "north" },
   { code: "560012", area: "IISc Campus",            lat: 13.0210, lng: 77.5680, zone: "north" },
@@ -74,6 +104,7 @@ const PINCODES = [
   { code: "560026", area: "Vidyaranyapura",         lat: 13.0810, lng: 77.5550, zone: "north" },
   { code: "560032", area: "HRBR Layout",            lat: 13.0200, lng: 77.6300, zone: "north" },
   { code: "560043", area: "Banaswadi",              lat: 13.0200, lng: 77.6470, zone: "north" },
+  { code: "560044", area: "Hennur Bande",           lat: 13.0570, lng: 77.6400, zone: "north" },
   { code: "560045", area: "Hebbal Kempapura",       lat: 13.0500, lng: 77.5920, zone: "north" },
   { code: "560046", area: "Nagavara",               lat: 13.0420, lng: 77.6190, zone: "north" },
   { code: "560049", area: "Sahakara Nagar",         lat: 13.0700, lng: 77.5850, zone: "north" },
@@ -88,8 +119,10 @@ const PINCODES = [
   { code: "560094", area: "Sanjay Nagar",           lat: 13.0340, lng: 77.5810, zone: "north" },
   { code: "560097", area: "Vidyaranyapura West",    lat: 13.0790, lng: 77.5470, zone: "north" },
   { code: "560106", area: "Jakkur",                 lat: 13.0790, lng: 77.6090, zone: "north" },
+  { code: "560110", area: "Bagalur",                lat: 13.1320, lng: 77.6620, zone: "north" },
+  { code: "560113", area: "Chikkajala",             lat: 13.1480, lng: 77.6360, zone: "north" },
 
-  // ---------- EAST ----------
+  // ---------- EAST (24) ----------
   { code: "560005", area: "Frazer Town",            lat: 12.9970, lng: 77.6160, zone: "east" },
   { code: "560006", area: "HAL II Stage",           lat: 12.9620, lng: 77.6680, zone: "east" },
   { code: "560008", area: "Indiranagar",            lat: 12.9710, lng: 77.6410, zone: "east" },
@@ -108,13 +141,19 @@ const PINCODES = [
   { code: "560093", area: "Kasturi Nagar",          lat: 12.9950, lng: 77.6590, zone: "east" },
   { code: "560096", area: "Doddanekkundi",          lat: 12.9750, lng: 77.7100, zone: "east" },
   { code: "560103", area: "Brookefield",            lat: 12.9650, lng: 77.7180, zone: "east" },
+  { code: "560105", area: "Varthur",                lat: 12.9430, lng: 77.7520, zone: "east" },
+  { code: "560107", area: "Ramamurthy Nagar",       lat: 13.0120, lng: 77.6800, zone: "east" },
   { code: "560109", area: "Carmelaram",             lat: 12.9230, lng: 77.7050, zone: "east" },
+  { code: "560114", area: "Hagadur",                lat: 12.9850, lng: 77.7450, zone: "east" },
+  { code: "560116", area: "Mahadevapura",           lat: 12.9870, lng: 77.7000, zone: "east" },
+  { code: "560117", area: "Pattandur Agrahara",     lat: 12.9730, lng: 77.7430, zone: "east" },
 
-  // ---------- SOUTH ----------
+  // ---------- SOUTH (29) ----------
   { code: "560004", area: "Basavanagudi",           lat: 12.9420, lng: 77.5750, zone: "south" },
   { code: "560011", area: "Jayanagar",              lat: 12.9290, lng: 77.5830, zone: "south" },
   { code: "560018", area: "Chamarajpet",            lat: 12.9550, lng: 77.5670, zone: "south" },
   { code: "560019", area: "Gavipuram Extension",    lat: 12.9420, lng: 77.5630, zone: "south" },
+  { code: "560028", area: "Lakkasandra",            lat: 12.9440, lng: 77.5990, zone: "south" },
   { code: "560029", area: "Bommanahalli",           lat: 12.9020, lng: 77.6200, zone: "south" },
   { code: "560034", area: "Koramangala",            lat: 12.9350, lng: 77.6240, zone: "south" },
   { code: "560035", area: "Bellandur",              lat: 12.9300, lng: 77.6780, zone: "south" },
@@ -131,13 +170,17 @@ const PINCODES = [
   { code: "560078", area: "JP Nagar",               lat: 12.9050, lng: 77.5850, zone: "south" },
   { code: "560083", area: "Begur",                  lat: 12.8780, lng: 77.6240, zone: "south" },
   { code: "560085", area: "Girinagar",              lat: 12.9320, lng: 77.5520, zone: "south" },
+  { code: "560088", area: "Akshayanagar",           lat: 12.8730, lng: 77.6400, zone: "south" },
   { code: "560095", area: "Koramangala VIII",       lat: 12.9320, lng: 77.6260, zone: "south" },
   { code: "560099", area: "Electronic City",        lat: 12.8450, lng: 77.6610, zone: "south" },
   { code: "560100", area: "Electronic City Phase II", lat: 12.8300, lng: 77.6770, zone: "south" },
+  { code: "560101", area: "Sarjapura",              lat: 12.8800, lng: 77.7000, zone: "south" },
   { code: "560102", area: "HSR Sector 7",           lat: 12.9030, lng: 77.6520, zone: "south" },
   { code: "560108", area: "Bommasandra",            lat: 12.8190, lng: 77.6900, zone: "south" },
+  { code: "560111", area: "Chandapura",             lat: 12.7990, lng: 77.7100, zone: "south" },
+  { code: "560115", area: "Konanakunte",            lat: 12.8800, lng: 77.5460, zone: "south" },
 
-  // ---------- WEST ----------
+  // ---------- WEST (19) ----------
   { code: "560010", area: "Rajajinagar",            lat: 12.9870, lng: 77.5560, zone: "west" },
   { code: "560023", area: "Magadi Road",            lat: 12.9740, lng: 77.5400, zone: "west" },
   { code: "560040", area: "Vijayanagar",            lat: 12.9700, lng: 77.5350, zone: "west" },
@@ -148,15 +191,18 @@ const PINCODES = [
   { code: "560072", area: "Vijayanagar West",       lat: 12.9710, lng: 77.5260, zone: "west" },
   { code: "560073", area: "Sunkadakatte",           lat: 12.9970, lng: 77.5050, zone: "west" },
   { code: "560079", area: "Bagalakunte",            lat: 13.0410, lng: 77.5260, zone: "west" },
+  { code: "560081", area: "Hampi Nagar",            lat: 12.9530, lng: 77.5180, zone: "west" },
+  { code: "560082", area: "Hesaraghatta",           lat: 13.1380, lng: 77.4750, zone: "west" },
   { code: "560086", area: "Mahalakshmipuram",       lat: 13.0040, lng: 77.5340, zone: "west" },
   { code: "560089", area: "Ittamadu",               lat: 12.9220, lng: 77.5350, zone: "west" },
   { code: "560090", area: "Chikkabanavara",         lat: 13.0570, lng: 77.4960, zone: "west" },
   { code: "560091", area: "Hampinagar",             lat: 12.9530, lng: 77.5260, zone: "west" },
   { code: "560098", area: "Kengeri Satellite Town", lat: 12.8990, lng: 77.5040, zone: "west" },
-  { code: "560104", area: "Doddabidarakallu",       lat: 13.0500, lng: 77.5050, zone: "west" }
+  { code: "560104", area: "Doddabidarakallu",       lat: 13.0500, lng: 77.5050, zone: "west" },
+  { code: "560112", area: "Sondekoppa",             lat: 13.0200, lng: 77.4400, zone: "west" }
 ];
 
-// Geographic city centre - used for radius / "exceeds 10 km" checks against the city heart
+// Geographic city centre - used as default reference point
 const CITY_CENTRE = { lat: 12.9716, lng: 77.5946 };
 
 // Operational radius limit (km) - the 10 km serving radius
@@ -166,6 +212,7 @@ const RADIUS_LIMIT_KM = 10;
 window.BZM_DATA = {
   BENGALURU_BOUNDARY,
   MAIN_ZONES,
+  ZONE_COLOR_PRESETS,
   PINCODES,
   CITY_CENTRE,
   RADIUS_LIMIT_KM
