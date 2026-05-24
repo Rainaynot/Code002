@@ -427,40 +427,11 @@ const PINCODE_AREAS = {
   '560116': { main:'Kaggalipura',                   sub:['Bolare','Somanhalli','Taralu','Thattekuppe'] }
 };
 
-/* Hand-drawn approximate Bengaluru cardinal zones (lat,lng).
-   Intersected with the Bengaluru polygon at runtime so the final outline
-   follows the city border, not centered sectors. */
-const CARDINAL_POLYGONS_LATLNG = {
-  C: [
-    [13.005,77.575],[13.010,77.605],[13.000,77.625],[12.985,77.640],
-    [12.965,77.642],[12.945,77.640],[12.928,77.625],[12.922,77.605],
-    [12.928,77.580],[12.948,77.563],[12.978,77.560],[13.005,77.575]
-  ],
-  N: [
-    [13.000,77.450],[13.030,77.450],[13.080,77.460],[13.150,77.495],
-    [13.180,77.555],[13.185,77.620],[13.165,77.685],[13.120,77.720],
-    [13.060,77.730],[13.020,77.720],[13.000,77.690],[13.005,77.625],
-    [13.010,77.605],[13.005,77.575],[13.000,77.530],[13.000,77.450]
-  ],
-  S: [
-    [12.928,77.450],[12.928,77.580],[12.922,77.605],[12.928,77.625],
-    [12.910,77.680],[12.870,77.700],[12.825,77.685],[12.795,77.640],
-    [12.785,77.580],[12.795,77.520],[12.820,77.475],[12.860,77.450],
-    [12.900,77.445],[12.928,77.450]
-  ],
-  E: [
-    [13.000,77.625],[13.020,77.665],[13.045,77.715],[13.040,77.770],
-    [13.000,77.810],[12.945,77.820],[12.895,77.815],[12.870,77.785],
-    [12.860,77.740],[12.875,77.700],[12.910,77.680],[12.928,77.625],
-    [12.945,77.640],[12.965,77.642],[12.985,77.640],[13.000,77.625]
-  ],
-  W: [
-    [13.000,77.575],[12.978,77.560],[12.948,77.563],[12.928,77.580],
-    [12.928,77.450],[12.900,77.445],[12.870,77.450],[12.840,77.460],
-    [12.870,77.475],[12.910,77.470],[12.945,77.470],[12.970,77.480],
-    [13.000,77.490],[13.005,77.530],[13.000,77.575]
-  ]
-};
+/* The 5 cardinal zones (Central / North / South / East / West) are generated at
+   runtime from real bearings around the Bengaluru centroid and then clipped to
+   the actual Bengaluru polygon, so each outline hugs the real city border and
+   no two zones overlap. The hand-drawn polygons that used to live here have
+   been removed in favour of the proper bearing-based construction below. */
 
 /* Hardcoded approximate Bengaluru BBMP polygon (fallback if Nominatim fails) */
 const BENGALURU_FALLBACK = {
@@ -580,36 +551,66 @@ async function fetchAreasInside(geojson, pincode) {
   if (areasCache.has(cacheKey)) return areasCache.get(cacheKey);
   const polyStr = geojsonToOverpassPoly(geojson);
   if (!polyStr) return [];
-  // Two strategies merged: places inside polygon + features tagged with this postcode
-  const q = `[out:json][timeout:25];
+  // Comprehensive query: every named place, neighbourhood, locality, residential
+  // area, and anything tagged with this exact postcode that lives inside the
+  // pincode polygon. Way and relation centres are included so we catch larger
+  // named layouts/colonies, not just point-tagged suburbs.
+  const q = `[out:json][timeout:30];
 (
-  node["place"~"suburb|neighbourhood|locality|quarter|village|hamlet"](poly:"${polyStr}");
+  node["place"~"city|town|suburb|neighbourhood|locality|quarter|village|hamlet|isolated_dwelling"](poly:"${polyStr}");
+  way ["place"~"suburb|neighbourhood|locality|quarter|village"](poly:"${polyStr}");
+  relation["place"~"suburb|neighbourhood|locality|quarter"](poly:"${polyStr}");
   node["addr:postcode"="${pincode}"]["name"];
-  way["addr:postcode"="${pincode}"]["name"]["place"];
+  way ["addr:postcode"="${pincode}"]["name"];
+  relation["addr:postcode"="${pincode}"]["name"];
+  way ["landuse"="residential"]["name"](poly:"${polyStr}");
+  way ["residential"]["name"](poly:"${polyStr}");
 );
-out tags center 400;`;
+out tags center 600;`;
   try {
-    const res = await fetch(OVERPASS, {method:'POST', body:q});
-    if (!res.ok) return [];
-    const data = await res.json();
-    const names = (data.elements||[]).map(e => e.tags && e.tags.name).filter(Boolean);
-    const unique = [...new Set(names)].sort();
+    const data = await overpassFetch(q);
+    const names = (data.elements||[])
+      .map(e => e.tags && e.tags.name)
+      .filter(Boolean)
+      // strip generic descriptors so we don't list a road as a "main area"
+      .filter(n => !/^(road|street|cross|main|circle|junction|stop|station|bus|temple)$/i.test(n.trim()));
+    const unique = [...new Set(names)].sort((a,b) => a.localeCompare(b));
     areasCache.set(cacheKey, unique);
     return unique;
   } catch(e) { console.warn('Overpass error', e); return []; }
 }
 
+/* Mirror endpoints — Overpass occasionally rejects/times out one host but
+   the others stay healthy. We try them in order until one returns. */
+const OVERPASS_MIRRORS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.fr/api/interpreter'
+];
+async function overpassFetch(query) {
+  let lastErr;
+  for (const url of OVERPASS_MIRRORS) {
+    try {
+      const res = await fetch(url, { method:'POST', body:query });
+      if (res.ok) return await res.json();
+      lastErr = new Error(`HTTP ${res.status} from ${url}`);
+    } catch(e) { lastErr = e; }
+  }
+  throw lastErr || new Error('All Overpass mirrors failed');
+}
+
 async function fetchAllAreasInBengaluru(geojson) {
   const polyStr = geojsonToOverpassPoly(geojson);
   if (!polyStr) return [];
-  const q = `[out:json][timeout:30];
+  // Tighter, faster query: just point-tagged suburbs / neighbourhoods / quarters
+  // / localities inside the city polygon.  Using a smaller `out` cap keeps each
+  // mirror happy and avoids the 1500-element rejections we used to see.
+  const q = `[out:json][timeout:45];
 (
-  node["place"~"suburb|neighbourhood|quarter"](poly:"${polyStr}");
+  node["place"~"suburb|neighbourhood|quarter|locality"](poly:"${polyStr}");
 );
-out tags 1500;`;
-  const res = await fetch(OVERPASS, {method:'POST', body:q});
-  if (!res.ok) throw new Error('Overpass failed');
-  const data = await res.json();
+out tags 1200;`;
+  const data = await overpassFetch(q);
   return (data.elements||[]).filter(e => e.tags && e.tags.name).map(e => ({
     lat:e.lat, lng:e.lon, name:e.tags.name, place:e.tags.place, postcode:e.tags['addr:postcode']
   }));
@@ -659,6 +660,14 @@ class Zone {
     }
     this.geojson = union.geometry;
     this.stats = computeZoneStats(this.geojson);
+    // Per-component (pre-union) stats so we can show e.g. "10 + 10 = 20 km"
+    // when this zone is a combination of two original zones.
+    this.componentStats = this.components.map(c => computeZoneStats(c.geojson));
+    this.summedStats = {
+      areaKm2:      this.componentStats.reduce((a,s) => a + s.areaKm2,      0),
+      perimeterKm:  this.componentStats.reduce((a,s) => a + s.perimeterKm,  0),
+      maxRadiusKm:  this.componentStats.reduce((a,s) => a + s.maxRadiusKm,  0)
+    };
   }
   draw() {
     if (this.layer) map.removeLayer(this.layer);
@@ -693,17 +702,31 @@ async function loadComponentForPincode(pincode) {
   // Main area name: prefer the curated directory; fall back to OSM
   const mainArea = dir ? dir.main
     : (addr.suburb || addr.neighbourhood || addr.city_district || addr.county || addr.state_district || addr.city || (result.display_name||'').split(',')[0] || pincode);
-  const tableSubs = dir ? [...dir.sub] : [];
-  // Pull OSM areas inside the polygon to enrich the curated list
+  const curatedSubs = dir ? [...dir.sub] : [];
+  // Read the actual map for this pincode polygon to discover every other named
+  // area / suburb / neighbourhood / locality OSM has tagged inside it.
   const osmAreas = await fetchAreasInside(result.geojson, pincode);
-  // Merge case-insensitively
-  const seen = new Set();
-  const areas = [];
-  [...tableSubs, ...osmAreas].forEach(a => {
+  // De-dup OSM list against the curated main + sub list (case-insensitive)
+  const knownLc = new Set(
+    [mainArea, ...curatedSubs].map(s => String(s).toLowerCase().trim())
+  );
+  const extraOsm = osmAreas.filter(a => {
     const k = String(a).toLowerCase().trim();
-    if (k && !seen.has(k)) { seen.add(k); areas.push(a); }
+    return k && !knownLc.has(k);
   });
-  return { pincode, geojson: result.geojson, areas, mainArea, name: mainArea };
+  // For backwards compatibility, "areas" still contains the merged sub-area
+  // list (curated first, then OSM-discovered).  But we also keep the two
+  // sources separately so the UI can display them as labelled groups.
+  const areas = [...curatedSubs, ...extraOsm];
+  return {
+    pincode,
+    geojson: result.geojson,
+    areas,
+    curatedSubs,
+    osmAreas: extraOsm,
+    mainArea,
+    name: mainArea
+  };
 }
 
 async function addZone(pincode, customName=null) {
@@ -717,12 +740,14 @@ async function addZone(pincode, customName=null) {
   try { comp = await loadComponentForPincode(pincode); }
   catch(e) { hideLoading(); toast(e.message, 'error'); return; }
   const zone = new Zone({ name: customName || comp.name || pincode, components:[comp] });
+  zone.expanded = true; // open the area panel by default so the user sees every main + sub area
   zones.set(zone.id, zone);
   zone.draw();
   hideLoading();
   renderZoneList(); updateHeader(); recomputeCombined();
   map.fitBounds(zone.layer.getBounds(), { padding:[40,40], maxZoom:14 });
-  toast(`Added ${zone.name} (${pincode}) — ${comp.areas.length} areas`, 'success');
+  const totalAreas = (comp.curatedSubs||[]).length + (comp.osmAreas||[]).length;
+  toast(`Added ${zone.name} (${pincode}) — ${totalAreas} areas (${(comp.curatedSubs||[]).length} curated + ${(comp.osmAreas||[]).length} from map)`, 'success');
 }
 
 async function combineSelected() {
@@ -838,17 +863,35 @@ function renderZoneList() {
         <span>Perimeter: <b>${fmtKm(z.stats.perimeterKm)} km</b></span>
         <span>Center→edge: <b>${fmtKm(z.stats.maxRadiusKm)} km</b></span>
         <span><span class="badge ${within?'good':'warn'}">${within?'Within 10 km ✓':'Exceeds 10 km'}</span></span>
+        ${ z.isCombined ? `
+          <span style="grid-column:1/-1;border-top:1px dashed var(--border);padding-top:6px;margin-top:2px">
+            <b style="color:#ffc05a">Combined extent (sum):</b>
+            <b>${fmtKm(z.summedStats.maxRadiusKm)} km</b>
+            <span style="color:var(--text-3);font-family:monospace;font-size:10px">(${z.componentStats.map(s=>fmtKm(s.maxRadiusKm)).join(' + ')})</span>
+          </span>
+          <span style="grid-column:1/-1">
+            <span style="color:var(--text-3)">Sum of areas:</span> <b>${fmtKm(z.summedStats.areaKm2)} km²</b>
+          </span>
+        ` : '' }
       </div>
       <div class="areas-block">
         ${z.components.map(c => {
           const dir = PINCODE_AREAS[c.pincode];
           const main = c.mainArea || c.name || (dir ? dir.main : c.pincode);
+          const curated = c.curatedSubs || (dir ? dir.sub : []) || [];
+          const osm = c.osmAreas || [];
           return `
           <div class="pin-group">
             <div class="pin-head">${escapeHTML(c.pincode)} <span style="color:var(--text-1);text-transform:none;font-weight:700;letter-spacing:0">— ${escapeHTML(main)}</span></div>
-            <div>${ (c.areas||[]).length
-              ? c.areas.map(a => `<span class="area-tag">${escapeHTML(a)}</span>`).join('')
-              : '<i style="color:var(--text-3)">No mapped sub-areas found.</i>' }</div>
+            ${ curated.length ? `
+              <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 2px">Main sub-areas</div>
+              <div>${curated.map(a => `<span class="area-tag" style="background:rgba(76,201,255,.12);color:#cfe6ff">${escapeHTML(a)}</span>`).join('')}</div>
+            ` : ''}
+            ${ osm.length ? `
+              <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 2px">Other areas on the map (${osm.length})</div>
+              <div>${osm.map(a => `<span class="area-tag">${escapeHTML(a)}</span>`).join('')}</div>
+            ` : ''}
+            ${ (!curated.length && !osm.length) ? '<i style="color:var(--text-3)">No mapped sub-areas found.</i>' : '' }
           </div>`;
         }).join('')}
       </div>
@@ -893,19 +936,27 @@ function recomputeCombined() {
   if (combinedPreviewMarker) { map.removeLayer(combinedPreviewMarker); combinedPreviewMarker=null; }
   if (sel.length < 2) { sec.style.display='none'; return; }
   sec.style.display='';
-  // Union all selected geometries
+  // Union all selected geometries (for the orange dashed preview overlay)
   let union = turf.feature(sel[0].geojson);
   for (let i=1; i<sel.length; i++) { try { union = turf.union(union, turf.feature(sel[i].geojson)) || union; } catch(e){} }
   const stats = computeZoneStats(union.geometry);
   const allPin = [...new Set(sel.flatMap(z => z.pincodes))];
   const allAreas = [...new Set(sel.flatMap(z => z.allAreas))].sort();
+
+  // Summed-radius math: e.g. zone1 (10 km) + zone2 (10 km) = 20 km combined extent.
+  const summedRadius = sel.reduce((acc, z) => acc + z.stats.maxRadiusKm, 0);
+  const summedArea   = sel.reduce((acc, z) => acc + z.stats.areaKm2,    0);
+  const radiusFormula = sel.map(z => fmtKm(z.stats.maxRadiusKm)).join(' + ');
+
   $('#cPin').textContent = allPin.length;
   $('#cAreas').textContent = allAreas.length;
-  $('#cArea').innerHTML = `${fmtKm(stats.areaKm2)} <small>km²</small>`;
-  $('#cRad').innerHTML = `${fmtKm(stats.maxRadiusKm)} <small>km</small>`;
+  $('#cArea').innerHTML = `${fmtKm(summedArea)} <small>km² (sum)</small>`;
+  $('#cRad').innerHTML  = `${fmtKm(summedRadius)} <small>km (${radiusFormula})</small>`;
+  // Within-10-km uses the unioned polygon's geometric center→edge distance
+  // (the real reachable extent); the badge wording makes that explicit.
   const within = stats.maxRadiusKm <= 10;
   const wb = $('#cWithin');
-  wb.textContent = within ? `Yes — within 10 km ✓` : `No — extends ${fmtKm(stats.maxRadiusKm)} km`;
+  wb.textContent = within ? `Yes — union extent ${fmtKm(stats.maxRadiusKm)} km ✓` : `No — union extent ${fmtKm(stats.maxRadiusKm)} km`;
   wb.className = 'badge '+(within?'good':'warn');
   $('#cAreaList').innerHTML = allAreas.length
     ? allAreas.map(a => `<span class="area-tag">${escapeHTML(a)}</span>`).join('')
@@ -932,22 +983,50 @@ function sectorPolygon(centerCoord, radiusKm, startBearing, endBearing, steps=64
 
 function buildCardinalZones() {
   const cityFeat = turf.feature(bengaluruGeo);
-  // Convert lat,lng arrays to GeoJSON polygons (lng,lat ordering)
-  const raw = {};
-  for (const [k, coords] of Object.entries(CARDINAL_POLYGONS_LATLNG)) {
-    raw[k] = turf.polygon([coords.map(c => [c[1], c[0]])]);
-  }
-  const out = {};
-  // Central first; clip to city
-  try { out.C = turf.intersect(raw.C, cityFeat) || raw.C; } catch(e) { out.C = raw.C; }
-  // Build N/S/E/W: clip to city, then subtract anything already claimed (so they never overlap)
-  let occupied = out.C;
-  for (const k of ['N','S','E','W']) {
-    let z = raw[k];
-    try { z = turf.intersect(z, cityFeat) || z; } catch(e) {}
-    try { z = turf.difference(z, occupied) || z; } catch(e) {}
+
+  // Real city centroid (so sectors radiate from the geographic center of Bengaluru,
+  // not from a hand-picked point).
+  const cc = turf.centroid(cityFeat).geometry.coordinates; // [lng, lat]
+
+  // Central zone = a 4 km circle around the centroid, clipped to the city.
+  const centralCircle = turf.circle(cc, 4, { steps: 96, units: 'kilometers' });
+  let central;
+  try { central = turf.intersect(centralCircle, cityFeat) || centralCircle; }
+  catch (e) { central = centralCircle; }
+
+  // Build a wedge polygon from the centroid for a given bearing range.
+  // Radius is large enough (60 km) to fully cover Bengaluru in every direction;
+  // the wedge is then intersected with the city to follow the real outline.
+  const wedge = (startBearing, endBearing) => {
+    const radiusKm = 60, steps = 96;
+    let s = startBearing, e = endBearing;
+    if (e <= s) e += 360;
+    const ring = [cc];
+    for (let i = 0; i <= steps; i++) {
+      const a = s + (e - s) * i / steps;
+      const b = a > 180 ? a - 360 : a;
+      ring.push(turf.destination(cc, radiusKm, b, { units: 'kilometers' }).geometry.coordinates);
+    }
+    ring.push(cc);
+    return turf.polygon([ring]);
+  };
+
+  // Standard 4-quadrant compass split (NE-NW = North, NE-SE = East, etc.) so the
+  // resulting boundaries are clean diagonals, exactly what is expected of cardinal
+  // zones.  Each wedge is clipped to the city, then central is subtracted.
+  const wedges = {
+    N: wedge(-45,  45),   // 315° -> 45°
+    E: wedge( 45, 135),
+    S: wedge(135, 225),
+    W: wedge(225, 315)
+  };
+
+  const out = { C: central };
+  for (const k of ['N', 'E', 'S', 'W']) {
+    let z = wedges[k];
+    try { z = turf.intersect(z, cityFeat) || z; } catch (e) { /* keep wedge */ }
+    try { z = turf.difference(z, central) || z; } catch (e) { /* keep clipped */ }
     out[k] = z;
-    try { occupied = turf.union(occupied, z) || occupied; } catch(e) {}
   }
   return out;
 }
@@ -987,6 +1066,9 @@ async function showAllAreas(on) {
   showLoading('Loading suburbs across Bengaluru…');
   try {
     const items = await fetchAllAreasInBengaluru(bengaluruGeo);
+    if (!items.length) {
+      throw new Error('No suburbs returned by OpenStreetMap');
+    }
     allAreasLoaded = true;
     allAreasLayer = L.layerGroup();
     items.forEach(it => {
@@ -1008,9 +1090,10 @@ async function showAllAreas(on) {
       allAreasLayer.addLayer(m);
     });
     allAreasLayer.addTo(map);
-    toast(`Loaded ${items.length} areas`, 'success');
+    toast(`Loaded ${items.length} suburbs / neighbourhoods across Bengaluru`, 'success');
   } catch(e) {
-    toast('Failed to load areas: '+e.message, 'error');
+    console.error('All-suburbs load failed:', e);
+    toast(`Could not load suburbs: ${e.message || e}. Please try again — the OSM Overpass servers occasionally rate-limit.`, 'error', 6000);
     document.getElementById('tglAllAreas').checked = false;
   } finally { hideLoading(); }
 }
