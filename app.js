@@ -67,9 +67,12 @@
 
   // ============ STEP 1: BUILD PINCODE POLYGONS (Voronoi) ============
   function buildPincodePolygons() {
+    const boundary = state.boundary || BENGALURU_BOUNDARY;
+    const clipPoly = toClipPolygon(boundary);
+
     const points = PINCODES.map(p => [p.lng, p.lat]);
     const delaunay = d3.Delaunay.from(points);
-    const [minX, minY, maxX, maxY] = turf.bbox(BENGALURU_BOUNDARY);
+    const [minX, minY, maxX, maxY] = turf.bbox(boundary);
     const pad = 0.05;
     const voronoi = delaunay.voronoi([minX - pad, minY - pad, maxX + pad, maxY + pad]);
 
@@ -78,7 +81,7 @@
       if (!cell) return;
       try {
         const cellFeat = turf.polygon([cell]);
-        const clipped  = turf.intersect(cellFeat, BENGALURU_BOUNDARY);
+        const clipped  = turf.intersect(cellFeat, clipPoly);
         if (clipped) {
           clipped.properties = { code: p.code, area: p.area, zone: p.zone, lat: p.lat, lng: p.lng };
           state.pincodeFeatures[p.code] = clipped;
@@ -87,6 +90,86 @@
         console.warn(`Failed to clip pincode ${p.code}`, e);
       }
     });
+  }
+
+  // ============ STEP 0: FETCH LIVE OSM BOUNDARY ============
+  // Fetches Bengaluru's real administrative boundary from OpenStreetMap via Nominatim.
+  // Falls back to embedded polygon if offline / API fails. Caches in localStorage for 24h.
+  async function fetchOSMBoundary() {
+    const cacheKey = "bzm-osm-boundary-v2";
+
+    // 1. Try cached
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey));
+      if (cached && cached.ts && (Date.now() - cached.ts < 86400000) && cached.feature) {
+        setMapEngineStatus("OpenStreetMap Boundary Engine (cached)", "ok");
+        return cached.feature;
+      }
+    } catch {}
+
+    // 2. Fetch from Nominatim
+    try {
+      setMapEngineStatus("Fetching OSM boundary…", "loading");
+      const url = "https://nominatim.openstreetmap.org/search"
+        + "?q=" + encodeURIComponent("Bengaluru, Karnataka, India")
+        + "&format=json&polygon_geojson=1&limit=10";
+      const res = await fetch(url, { headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+
+      // Pick best polygon match: prefer admin boundaries with largest area
+      let best = null;
+      for (const d of data) {
+        if (!d.geojson) continue;
+        if (d.geojson.type !== "Polygon" && d.geojson.type !== "MultiPolygon") continue;
+        if (!best || (d.place_rank && best.place_rank && d.place_rank < best.place_rank)) {
+          best = d;
+        }
+      }
+
+      if (best && best.geojson) {
+        const feature = {
+          type: "Feature",
+          properties: { name: best.display_name || "Bengaluru", source: "OSM-Nominatim" },
+          geometry: best.geojson
+        };
+        try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), feature })); } catch {}
+        setMapEngineStatus("OpenStreetMap Boundary Engine (Leaflet Live)", "ok");
+        return feature;
+      }
+    } catch (e) {
+      console.warn("OSM boundary fetch failed, using embedded fallback:", e);
+    }
+
+    setMapEngineStatus("Embedded boundary (offline)", "warn");
+    return BENGALURU_BOUNDARY;
+  }
+
+  function setMapEngineStatus(text, kind) {
+    const el = document.getElementById("map-engine-status");
+    if (!el) return;
+    el.textContent = text;
+    el.dataset.kind = kind || "ok";
+  }
+
+  // Returns a single Polygon Feature suitable for turf.intersect (picks largest ring of MultiPolygon)
+  function toClipPolygon(feature) {
+    if (!feature || !feature.geometry) return feature;
+    const g = feature.geometry;
+    if (g.type === "Polygon") return feature;
+    if (g.type === "MultiPolygon") {
+      // Pick the largest sub-polygon by area
+      let bestRing = null, bestArea = 0;
+      for (const poly of g.coordinates) {
+        try {
+          const f = turf.polygon(poly);
+          const a = turf.area(f);
+          if (a > bestArea) { bestArea = a; bestRing = poly; }
+        } catch {}
+      }
+      if (bestRing) return turf.polygon(bestRing);
+    }
+    return feature;
   }
 
   // ============ STEP 2: BUILD MAIN ZONE POLYGONS ============
@@ -127,17 +210,35 @@
   }
 
   function drawBoundary() {
-    // Default: just the Bengaluru outline. Not interactive - it's a base reference, not a zone.
-    state.layers.boundary = L.geoJSON(BENGALURU_BOUNDARY, {
+    const boundary = state.boundary || BENGALURU_BOUNDARY;
+
+    // Halo / glow layer underneath
+    const halo = L.geoJSON(boundary, {
       style: {
         color: "#06b6d4",
-        weight: 2.5,
-        fillColor: "#06b6d4",
-        fillOpacity: 0.03,
-        dashArray: "8 4"
+        weight: 8,
+        opacity: 0.18,
+        fill: false,
+        lineCap: "round",
+        lineJoin: "round"
       },
       interactive: false
     }).addTo(state.map);
+
+    // Main solid boundary
+    state.layers.boundary = L.geoJSON(boundary, {
+      style: {
+        color: "#22d3ee",
+        weight: 2.5,
+        fillColor: "#06b6d4",
+        fillOpacity: 0.04,
+        lineCap: "round",
+        lineJoin: "round"
+      },
+      interactive: false
+    }).addTo(state.map);
+
+    state.layers._boundaryHalo = halo;
 
     state.map.fitBounds(state.layers.boundary.getBounds(), { padding: [20, 20] });
   }
@@ -952,12 +1053,20 @@
   }
 
   // ============ INIT ============
-  function init() {
+  async function init() {
+    setMapEngineStatus("Loading…", "loading");
+
+    // 0. Fetch live OSM boundary (with embedded fallback)
+    state.boundary = await fetchOSMBoundary();
+
+    // 1. Build geometry using the real boundary
     buildPincodePolygons();
     buildZonePolygons();
 
+    // 2. Map
     initMap();
 
+    // 3. UI
     populateZoneFilter();
     renderZoneList();
     renderCustomZoneList();
