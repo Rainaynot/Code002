@@ -15,7 +15,8 @@
     --text-1:#e6ecf5; --text-2:#9aa3b8; --text-3:#6b7388;
     --accent:#4cc9ff; --accent-2:#7c5cff;
     --good:#2ecc71; --warn:#f39c12; --bad:#ff5d6c;
-    --zN:#60a5fa; --zS:#fb7185; --zE:#34d399; --zW:#fbbf24; --zC:#a78bfa;
+    --zC:#ffb74c; --zN:#60a5fa; --zE:#34d399; --zS:#a78bfa; --zW:#fbbf24;
+    --cyan:#4cc9ff;
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-0);color:var(--text-1);overflow:hidden}
@@ -96,6 +97,74 @@
 
   .empty{text-align:center;padding:18px 8px;color:var(--text-3);font-size:12px}
 
+  /* === Bengaluru Zone Manager (BZM) panel === */
+  .bzm-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .bzm-header .bzm-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#ffb74c 0%,#ff7a59 100%);display:grid;place-items:center;font-weight:800;color:#0b0f1a;font-size:14px;flex-shrink:0;box-shadow:0 4px 12px rgba(255,138,76,.25)}
+  .bzm-header h1{margin:0;font-size:14px;font-weight:700;color:var(--text-1);letter-spacing:.2px;line-height:1.2}
+  .bzm-header .bzm-sub{font-size:11px;color:var(--text-3);margin-top:2px;line-height:1.3}
+
+  .bzm-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+  .bzm-stat{background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:10px 8px;text-align:center;transition:border-color .15s,transform .1s}
+  .bzm-stat:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .bzm-stat .num{font-size:20px;font-weight:800;color:var(--text-1);line-height:1}
+  .bzm-stat .lbl{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-top:5px}
+
+  .bzm-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .bzm-chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg-2);border:1px solid var(--border);color:var(--text-2);padding:6px 11px;border-radius:999px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;user-select:none}
+  .bzm-chip:hover{border-color:var(--accent);color:var(--text-1)}
+  .bzm-chip .swatch{width:8px;height:8px;border-radius:50%}
+  .bzm-chip.active{background:rgba(76,201,255,.12);border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .bzm-chip.active.zC{background:rgba(255,183,76,.14);border-color:var(--zC);color:var(--zC);box-shadow:0 0 0 1px var(--zC) inset}
+  .bzm-chip.active.zN{background:rgba(96,165,250,.14);border-color:var(--zN);color:var(--zN);box-shadow:0 0 0 1px var(--zN) inset}
+  .bzm-chip.active.zE{background:rgba(52,211,153,.14);border-color:var(--zE);color:var(--zE);box-shadow:0 0 0 1px var(--zE) inset}
+  .bzm-chip.active.zS{background:rgba(167,139,250,.14);border-color:var(--zS);color:var(--zS);box-shadow:0 0 0 1px var(--zS) inset}
+  .bzm-chip.active.zW{background:rgba(251,191,36,.14);border-color:var(--zW);color:var(--zW);box-shadow:0 0 0 1px var(--zW) inset}
+
+  .bzm-tabs{display:flex;background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:3px;margin-bottom:10px}
+  .bzm-tab{flex:1;text-align:center;padding:7px 6px;font-size:12px;font-weight:600;color:var(--text-3);cursor:pointer;border-radius:7px;transition:all .15s;user-select:none}
+  .bzm-tab:hover{color:var(--text-1)}
+  .bzm-tab.active{background:linear-gradient(135deg,var(--accent) 0%,var(--accent-2) 100%);color:#0b0f1a;box-shadow:0 2px 8px rgba(76,201,255,.25)}
+
+  .bzm-search{position:relative;margin-bottom:10px}
+  .bzm-search input{width:100%;background:var(--bg-2);border:1px solid var(--border);color:var(--text-1);padding:9px 12px 9px 32px;border-radius:10px;font-size:12px;outline:none;transition:border-color .15s}
+  .bzm-search input:focus{border-color:var(--accent)}
+  .bzm-search .ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:13px;pointer-events:none}
+
+  .bzm-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;padding-right:4px}
+  .bzm-list::-webkit-scrollbar{width:6px}
+  .bzm-list::-webkit-scrollbar-thumb{background:var(--bg-3);border-radius:4px}
+
+  /* Zone cards (Zones tab) */
+  .bzm-zone-card{background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:11px;cursor:pointer;transition:all .18s;animation:fadeUp .25s ease}
+  .bzm-zone-card:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.3)}
+  .bzm-zone-card .zhead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .bzm-zone-card .zdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;box-shadow:0 0 6px currentColor}
+  .bzm-zone-card .zname{font-size:13px;font-weight:700;color:var(--text-1);flex:1}
+  .bzm-zone-card .zcount{font-size:10px;color:var(--text-3);font-weight:500}
+  .bzm-zone-card .zmeta{display:flex;gap:10px;font-size:11px;color:var(--text-2);margin-bottom:8px}
+  .bzm-zone-card .zmeta b{color:var(--text-1);font-weight:700}
+  .bzm-zone-card .zpinchips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+  .bzm-pinchip{display:inline-block;background:var(--bg-3);border:1px solid var(--border);color:var(--text-2);font-size:10px;padding:2px 7px;border-radius:4px;font-family:ui-monospace,Menlo,monospace}
+  .bzm-zone-card .zareas{font-size:11px;color:var(--text-3);line-height:1.5}
+  .bzm-zone-card .zareas .area-tag{display:inline-block;background:var(--bg-3);padding:2px 6px;border-radius:3px;margin:2px 2px 0 0;font-size:10px;color:var(--text-2)}
+  .bzm-zone-card .zmore{display:inline-block;color:var(--accent);font-size:10px;padding:2px 6px;border-radius:3px;margin:2px 0 0 2px;font-weight:600}
+
+  /* Area / Pincode rows */
+  .bzm-row{display:flex;align-items:center;gap:10px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;cursor:pointer;transition:all .15s;animation:fadeUp .2s ease}
+  .bzm-row:hover{border-color:var(--accent);background:var(--bg-3)}
+  .bzm-row .rdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;box-shadow:0 0 4px currentColor}
+  .bzm-row .rmain{flex:1;min-width:0}
+  .bzm-row .rname{font-size:12px;font-weight:600;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bzm-row .rsub{font-size:10px;color:var(--text-3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,Menlo,monospace}
+  .zbadge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;flex-shrink:0}
+  .zbadge.zC{background:rgba(255,183,76,.16);color:var(--zC)}
+  .zbadge.zN{background:rgba(96,165,250,.16);color:var(--zN)}
+  .zbadge.zE{background:rgba(52,211,153,.16);color:var(--zE)}
+  .zbadge.zS{background:rgba(167,139,250,.16);color:var(--zS)}
+  .zbadge.zW{background:rgba(251,191,36,.16);color:var(--zW)}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
   /* Map controls (floating, top-right) */
   .map-controls{position:absolute;top:12px;right:12px;z-index:1000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
   .ctl-group{background:rgba(19,24,38,.92);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:10px;padding:8px;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
@@ -163,8 +232,8 @@
 
 <div class="app">
   <header class="top">
-    <div class="logo">PZ</div>
-    <h1>Pincode Zone Manager</h1>
+    <div class="logo">BZ</div>
+    <h1>Bengaluru Zone Manager</h1>
     <span class="sub">Bengaluru / India</span>
     <div class="spacer"></div>
     <div class="pill">Zones: <b id="hdrZones">0</b></div>
@@ -172,6 +241,46 @@
   </header>
 
   <aside class="sidebar">
+    <!-- === Bengaluru Zone Manager panel === -->
+    <div class="bzm-header">
+      <div class="bzm-logo">BZ</div>
+      <div>
+        <h1>Bengaluru Zone Manager</h1>
+        <div class="bzm-sub" id="bzmSub">116 localities &bull; 5 zones &bull; Draw custom zones</div>
+      </div>
+    </div>
+
+    <div class="bzm-stats">
+      <div class="bzm-stat"><div class="num" id="statZones">5</div><div class="lbl">Zones</div></div>
+      <div class="bzm-stat"><div class="num" id="statAreas">0</div><div class="lbl">Areas</div></div>
+      <div class="bzm-stat"><div class="num" id="statPincodes">116</div><div class="lbl">Pincodes</div></div>
+    </div>
+
+    <div class="bzm-chips" id="bzmChips">
+      <div class="bzm-chip active" data-zfilter="ALL">All</div>
+      <div class="bzm-chip" data-zfilter="C"><span class="swatch" style="background:var(--zC)"></span>Central</div>
+      <div class="bzm-chip" data-zfilter="N"><span class="swatch" style="background:var(--zN)"></span>North</div>
+      <div class="bzm-chip" data-zfilter="E"><span class="swatch" style="background:var(--zE)"></span>East</div>
+      <div class="bzm-chip" data-zfilter="S"><span class="swatch" style="background:var(--zS)"></span>South</div>
+      <div class="bzm-chip" data-zfilter="W"><span class="swatch" style="background:var(--zW)"></span>West</div>
+    </div>
+
+    <div class="bzm-tabs" id="bzmTabs">
+      <div class="bzm-tab active" data-tab="zones">Zones</div>
+      <div class="bzm-tab" data-tab="areas">Areas</div>
+      <div class="bzm-tab" data-tab="pincodes">Pincodes</div>
+    </div>
+
+    <div class="bzm-search" id="bzmSearchWrap" style="display:none">
+      <span class="ico">&#9906;</span>
+      <input id="bzmSearch" type="text" placeholder="Search areas or pincodes..." autocomplete="off" />
+    </div>
+
+    <div class="bzm-list" id="bzmList"></div>
+
+    <!-- === Existing zone-management tools (preserved) === -->
+    <div style="height:14px"></div>
+
     <!-- Add Zone -->
     <div class="section">
       <h2><span class="dot"></span>Create Zone</h2>
@@ -310,121 +419,125 @@ const COLORS = [
   '#3b82f6','#ef4444','#65a30d','#0d9488','#9333ea','#db2777'
 ];
 
-/* Bengaluru pincode -> main area + sub-areas directory */
+/* Bengaluru pincode -> main area + sub-areas + cardinal zone (C/N/E/S/W)
+   Covers all 116 Bengaluru pincodes from 560001 to 560116. */
 const PINCODE_AREAS = {
-  '560001': { main:'MG Road / Bangalore GPO',       sub:['MG Road','Brigade Road','Vidhana Soudha','Cubbon Road','Commercial Street'] },
-  '560002': { main:'Chickpet',                      sub:['Avenue Road','KR Market','OTC Road','Nagarathpete'] },
-  '560003': { main:'Malleswaram',                   sub:['8th Cross','Sampige Road','Margosa Road'] },
-  '560004': { main:'Basavanagudi',                  sub:['Gandhi Bazaar','Bull Temple Road','NR Colony'] },
-  '560005': { main:'Fraser Town',                   sub:['Cox Town','Pulikeshinagar','Wheeler Road'] },
-  '560006': { main:'High Grounds',                  sub:['Race Course Road','Palace Road','Cunningham Road'] },
-  '560007': { main:'Vasanth Nagar',                 sub:['Jayamahal','Cantonment Area'] },
-  '560008': { main:'HAL Area',                      sub:['HAL Airport Road','Jeevan Bhima Nagar'] },
-  '560009': { main:'City Market',                   sub:['KR Market surroundings','Cottonpet'] },
-  '560010': { main:'Rajajinagar',                   sub:['Rajajinagar Blocks','Industrial Town'] },
-  '560011': { main:'Jayanagar',                     sub:['Jayanagar 1st-9th Blocks'] },
-  '560012': { main:'IISc / Yeshwanthpur',           sub:['Mathikere','Tata Institute Area'] },
-  '560013': { main:'Jalahalli',                     sub:['BEL Area','Gangamma Circle'] },
-  '560014': { main:'Jalahalli West',                sub:['HMT Area','Peenya surroundings'] },
-  '560015': { main:'Vijayanagar Factory Area',      sub:['Binny Mills','Magadi Road belt'] },
-  '560016': { main:'Dooravani Nagar',               sub:['Ramamurthy Nagar','KR Puram side'] },
-  '560017': { main:'Domlur',                        sub:['Old Airport Road','Kodihalli'] },
-  '560018': { main:'Chamarajpet',                   sub:['1st-5th Main areas','Vinayaka Circle'] },
-  '560019': { main:'Banashankari',                  sub:['Hanumanthanagar','Srinagar'] },
-  '560020': { main:'Seshadripuram',                 sub:['Kumara Park West','Palace Guttahalli'] },
-  '560021': { main:'Okalipuram',                    sub:['Anand Rao Circle surroundings'] },
-  '560022': { main:'Yeshwanthpur',                  sub:['Goraguntepalya','Tumkur Road'] },
-  '560023': { main:'Magadi Road',                   sub:['Kamakshipalya','RPC Layout'] },
-  '560024': { main:'Hebbal',                        sub:['RT Nagar','Ganganagar','Hebbal Kempapura'] },
-  '560025': { main:'Richmond Town',                 sub:['Residency Road','Langford Town'] },
-  '560026': { main:'Govindarajanagar',              sub:['Vijayanagar extension areas'] },
-  '560027': { main:'Wilson Garden',                 sub:['Shanti Nagar','Lalbagh Road'] },
-  '560028': { main:'Basaveshwaranagar',             sub:['West of Chord Road areas'] },
-  '560029': { main:'Dharmaram College',             sub:['Dairy Circle','Adugodi'] },
-  '560030': { main:'Ashok Nagar',                   sub:['Richmond Circle','Lavelle Road'] },
-  '560032': { main:'RMV Extension',                 sub:['Sanjay Nagar','Bhoopasandra'] },
-  '560033': { main:'Maruthi Sevanagar',             sub:['Cooke Town extension'] },
-  '560034': { main:'Koramangala',                   sub:['Koramangala 1st-8th Blocks'] },
-  '560035': { main:'Carmelaram',                    sub:['Bellandur outskirts','Sarjapur Road stretch'] },
-  '560036': { main:'KR Puram',                      sub:['A Narayanapura','Battarahalli'] },
-  '560037': { main:'Marathahalli',                  sub:['Brookefield','Kundalahalli'] },
-  '560038': { main:'Indiranagar',                   sub:['HAL 2nd Stage','CMH Road'] },
-  '560039': { main:'Nayandahalli',                  sub:['Mysore Road belt'] },
-  '560040': { main:'Vijayanagar',                   sub:['Attiguppe','Hampinagar'] },
-  '560041': { main:'Jayanagar South',               sub:['JP Nagar Phase 1 surroundings'] },
-  '560042': { main:'Ulsoor',                        sub:['Murphy Town','Cambridge Layout'] },
-  '560043': { main:'Banaswadi',                     sub:['HRBR Layout','Kalyan Nagar'] },
-  '560045': { main:'Nagavara',                      sub:['Manyata Tech Park','Arabic College'] },
-  '560046': { main:'Benson Town',                   sub:['Cleveland Town','Pottery Town'] },
-  '560047': { main:'Ejipura',                       sub:['Neelasandra','Viveknagar'] },
-  '560048': { main:'Mahadevapura',                  sub:['Hoodi','Garudachar Palya'] },
-  '560049': { main:'Bhattarahalli',                 sub:['KR Puram east belt'] },
-  '560050': { main:'Banashankari Temple Area',      sub:['Hosakerehalli','Srinivasanagar'] },
-  '560051': { main:'Shivajinagar',                  sub:['Infantry Road','Tasker Town'] },
-  '560052': { main:'Vyalikaval',                    sub:['Palace Guttahalli extension'] },
-  '560053': { main:'Chickpet Extension',            sub:['Balepet','Cottonpet'] },
-  '560054': { main:'Mathikere',                     sub:['MSR Nagar','BEL Road'] },
-  '560055': { main:'Malleswaram West',              sub:['Mahalakshmi Layout nearby'] },
-  '560056': { main:'Kengeri',                       sub:['Kengeri Satellite Town'] },
-  '560057': { main:'Peenya',                        sub:['Peenya Industrial Area'] },
-  '560058': { main:'Peenya Industrial Estate',      sub:['Tumkur Road industrial belt'] },
-  '560059': { main:'RV Niketan',                    sub:['Banashankari Stage 3'] },
-  '560060': { main:'Rajarajeshwari Nagar',          sub:['BEML Layout','Ideal Homes'] },
-  '560061': { main:'Subramanyapura',                sub:['Uttarahalli Road areas'] },
-  '560062': { main:'Konanakunte',                   sub:['Anjanapura','ISRO Layout'] },
-  '560063': { main:'Yelahanka New Town',            sub:['Attur Layout','CRPF Campus'] },
-  '560064': { main:'Yelahanka',                     sub:['Allalasandra','Puttenahalli'] },
-  '560065': { main:'Bagalur',                       sub:['Aerospace Park surroundings'] },
-  '560066': { main:'Whitefield',                    sub:['ITPL','Kadugodi','Hope Farm'] },
-  '560067': { main:'Whitefield Railway Station',    sub:['Kadugodi extension'] },
-  '560068': { main:'Bommanahalli',                  sub:['Hongasandra','Begur Road'] },
-  '560069': { main:'Jayanagar East',                sub:['South End Circle'] },
-  '560070': { main:'Banashankari Stage I',          sub:['Kathriguppe'] },
-  '560071': { main:'Domlur / HAL',                  sub:['Domlur Layout','Embassy Golf Links'] },
-  '560072': { main:'Nagarbhavi',                    sub:['Moodalapalya','Naagarabhaavi Circle'] },
-  '560073': { main:'Nagasandra',                    sub:['Madanayakanahalli'] },
-  '560074': { main:'Bannerghatta Road',             sub:['Hulimavu','Gottigere'] },
-  '560075': { main:'New Thippasandra',              sub:['CV Raman Nagar nearby'] },
-  '560076': { main:'BTM Layout',                    sub:['Stage 1 & 2','Madiwala'] },
-  '560077': { main:'Kothanur',                      sub:['Hennur Road belt'] },
-  '560078': { main:'JP Nagar',                      sub:['JP Nagar Phases 1-8'] },
-  '560079': { main:'Basaveshwaranagar West',        sub:['Kurubarahalli'] },
-  '560080': { main:'Sadashivanagar',                sub:['Armane Nagar'] },
-  '560081': { main:'Electronics City Phase 1',      sub:['Tech parks and residential layouts'] },
-  '560082': { main:'JP Nagar South',                sub:['Arekere surroundings'] },
-  '560083': { main:'Bannerghatta',                  sub:['Jigani Road belt'] },
-  '560084': { main:'St Thomas Town',                sub:['Lingarajapuram','HBR Layout nearby'] },
-  '560085': { main:'Banashankari Stage II',         sub:['Girinagar'] },
-  '560086': { main:'Mahalakshmi Layout',            sub:['Nandini Layout'] },
-  '560087': { main:'Varthur',                       sub:['Gunjur','Balagere'] },
-  '560088': { main:'Hesaraghatta',                  sub:['Hessarghatta Lake surroundings'] },
-  '560089': { main:'Kengeri Upanagara',             sub:['Dubasipalya'] },
-  '560090': { main:'Chikkabidarakallu',             sub:['Jalahalli Cross surroundings'] },
-  '560091': { main:'Vidyaranyapura',                sub:['AMS Layout','BEL surroundings'] },
-  '560092': { main:'Sahakar Nagar',                 sub:['Kodigehalli'] },
-  '560093': { main:'CV Raman Nagar',                sub:['DRDO Township'] },
-  '560094': { main:'RMV 2nd Stage',                 sub:['Dollars Colony'] },
-  '560095': { main:'Koramangala Industrial Layout', sub:['Sony World Junction surroundings'] },
-  '560096': { main:'Nagarbhavi 2nd Stage',          sub:['Ullal Main Road'] },
-  '560097': { main:'Vidyaranyapura North',          sub:['MS Palya'] },
-  '560098': { main:'Rajarajeshwari Nagar West',     sub:['BHEL Layout'] },
-  '560099': { main:'Electronics City',              sub:['Hebbagodi','Bommasandra'] },
-  '560100': { main:'Electronic City',               sub:['Phase 1 & Phase 2'] },
-  '560102': { main:'HSR Layout',                    sub:['Sector 1-7'] },
-  '560103': { main:'Bellandur',                     sub:['ORR Tech Corridor'] },
-  '560104': { main:'Bommasandra Industrial Area',   sub:['Jigani Industrial belt'] },
-  '560105': { main:'Jigani',                        sub:['APC Circle','industrial layouts'] },
-  '560106': { main:'Anekal',                        sub:['Chandapura nearby'] },
-  '560107': { main:'Attibele',                      sub:['Karnataka-Tamil Nadu border area'] },
-  '560108': { main:'Nelamangala outskirts',         sub:['Industrial outskirts'] },
-  '560109': { main:'Bidadi Road belt',              sub:['Mysore Road outskirts'] },
-  '560110': { main:'Devanahalli outskirts',         sub:['Airport peripheral zones'] },
-  '560111': { main:'Hoskote outskirts',             sub:['Rural east Bengaluru belt'] },
-  '560112': { main:'Kanakapura Road outskirts',     sub:['Kaggalipura belt'] },
-  '560113': { main:'Sarjapur outskirts',            sub:['Rural Sarjapur clusters'] },
-  '560114': { main:'North Bengaluru rural belt',    sub:['Airport growth corridor'] },
-  '560115': { main:'South Bengaluru rural belt',    sub:['Bannerghatta outskirts'] },
-  '560116': { main:'Kaggalipura',                   sub:['Bolare','Somanhalli','Taralu','Thattekuppe'] }
+  '560001': { zone:'C', main:'MG Road / Bangalore GPO',       sub:['MG Road','Brigade Road','Vidhana Soudha','Cubbon Road','Commercial Street'] },
+  '560002': { zone:'C', main:'Chickpet',                      sub:['Avenue Road','KR Market','OTC Road','Nagarathpete'] },
+  '560003': { zone:'N', main:'Malleswaram',                   sub:['8th Cross','Sampige Road','Margosa Road'] },
+  '560004': { zone:'S', main:'Basavanagudi',                  sub:['Gandhi Bazaar','Bull Temple Road','NR Colony'] },
+  '560005': { zone:'C', main:'Fraser Town',                   sub:['Cox Town','Pulikeshinagar','Wheeler Road'] },
+  '560006': { zone:'C', main:'High Grounds',                  sub:['Race Course Road','Palace Road','Cunningham Road'] },
+  '560007': { zone:'C', main:'Vasanth Nagar',                 sub:['Jayamahal','Cantonment Area'] },
+  '560008': { zone:'E', main:'HAL Area',                      sub:['HAL Airport Road','Jeevan Bhima Nagar'] },
+  '560009': { zone:'C', main:'City Market',                   sub:['KR Market surroundings','Cottonpet'] },
+  '560010': { zone:'W', main:'Rajajinagar',                   sub:['Rajajinagar Blocks','Industrial Town'] },
+  '560011': { zone:'S', main:'Jayanagar',                     sub:['Jayanagar 1st-9th Blocks'] },
+  '560012': { zone:'N', main:'IISc / Yeshwanthpur',           sub:['Mathikere','Tata Institute Area'] },
+  '560013': { zone:'N', main:'Jalahalli',                     sub:['BEL Area','Gangamma Circle'] },
+  '560014': { zone:'N', main:'Jalahalli West',                sub:['HMT Area','Peenya surroundings'] },
+  '560015': { zone:'W', main:'Vijayanagar Factory Area',      sub:['Binny Mills','Magadi Road belt'] },
+  '560016': { zone:'E', main:'Dooravani Nagar',               sub:['Ramamurthy Nagar','KR Puram side'] },
+  '560017': { zone:'E', main:'Domlur',                        sub:['Old Airport Road','Kodihalli'] },
+  '560018': { zone:'C', main:'Chamarajpet',                   sub:['1st-5th Main areas','Vinayaka Circle'] },
+  '560019': { zone:'S', main:'Banashankari',                  sub:['Hanumanthanagar','Srinagar'] },
+  '560020': { zone:'C', main:'Seshadripuram',                 sub:['Kumara Park West','Palace Guttahalli'] },
+  '560021': { zone:'W', main:'Okalipuram',                    sub:['Anand Rao Circle surroundings'] },
+  '560022': { zone:'N', main:'Yeshwanthpur',                  sub:['Goraguntepalya','Tumkur Road'] },
+  '560023': { zone:'W', main:'Magadi Road',                   sub:['Kamakshipalya','RPC Layout'] },
+  '560024': { zone:'N', main:'Hebbal',                        sub:['RT Nagar','Ganganagar','Hebbal Kempapura'] },
+  '560025': { zone:'C', main:'Richmond Town',                 sub:['Residency Road','Langford Town'] },
+  '560026': { zone:'W', main:'Govindarajanagar',              sub:['Vijayanagar extension areas'] },
+  '560027': { zone:'C', main:'Wilson Garden',                 sub:['Shanti Nagar','Lalbagh Road'] },
+  '560028': { zone:'W', main:'Basaveshwaranagar',             sub:['West of Chord Road areas'] },
+  '560029': { zone:'C', main:'Dharmaram College',             sub:['Dairy Circle','Adugodi'] },
+  '560030': { zone:'C', main:'Ashok Nagar',                   sub:['Richmond Circle','Lavelle Road'] },
+  '560031': { zone:'C', main:'Lalbagh',                       sub:['Lalbagh West Gate','Sajjan Rao Circle','Mavalli'] },
+  '560032': { zone:'N', main:'RMV Extension',                 sub:['Sanjay Nagar','Bhoopasandra'] },
+  '560033': { zone:'E', main:'Maruthi Sevanagar',             sub:['Cooke Town extension'] },
+  '560034': { zone:'S', main:'Koramangala',                   sub:['Koramangala 1st-8th Blocks'] },
+  '560035': { zone:'E', main:'Carmelaram',                    sub:['Bellandur outskirts','Sarjapur Road stretch'] },
+  '560036': { zone:'E', main:'KR Puram',                      sub:['A Narayanapura','Battarahalli'] },
+  '560037': { zone:'E', main:'Marathahalli',                  sub:['Brookefield','Kundalahalli'] },
+  '560038': { zone:'E', main:'Indiranagar',                   sub:['HAL 2nd Stage','CMH Road'] },
+  '560039': { zone:'W', main:'Nayandahalli',                  sub:['Mysore Road belt'] },
+  '560040': { zone:'W', main:'Vijayanagar',                   sub:['Attiguppe','Hampinagar'] },
+  '560041': { zone:'S', main:'Jayanagar South',               sub:['JP Nagar Phase 1 surroundings'] },
+  '560042': { zone:'C', main:'Ulsoor',                        sub:['Murphy Town','Cambridge Layout'] },
+  '560043': { zone:'E', main:'Banaswadi',                     sub:['HRBR Layout','Kalyan Nagar'] },
+  '560044': { zone:'N', main:'HMT Township',                  sub:['Jalahalli HMT Layout','HMT Main Road'] },
+  '560045': { zone:'N', main:'Nagavara',                      sub:['Manyata Tech Park','Arabic College'] },
+  '560046': { zone:'C', main:'Benson Town',                   sub:['Cleveland Town','Pottery Town'] },
+  '560047': { zone:'S', main:'Ejipura',                       sub:['Neelasandra','Viveknagar'] },
+  '560048': { zone:'E', main:'Mahadevapura',                  sub:['Hoodi','Garudachar Palya'] },
+  '560049': { zone:'E', main:'Bhattarahalli',                 sub:['KR Puram east belt'] },
+  '560050': { zone:'S', main:'Banashankari Temple Area',      sub:['Hosakerehalli','Srinivasanagar'] },
+  '560051': { zone:'C', main:'Shivajinagar',                  sub:['Infantry Road','Tasker Town'] },
+  '560052': { zone:'C', main:'Vyalikaval',                    sub:['Palace Guttahalli extension'] },
+  '560053': { zone:'C', main:'Chickpet Extension',            sub:['Balepet','Cottonpet'] },
+  '560054': { zone:'N', main:'Mathikere',                     sub:['MSR Nagar','BEL Road'] },
+  '560055': { zone:'N', main:'Malleswaram West',              sub:['Mahalakshmi Layout nearby'] },
+  '560056': { zone:'W', main:'Kengeri',                       sub:['Kengeri Satellite Town'] },
+  '560057': { zone:'W', main:'Peenya',                        sub:['Peenya Industrial Area'] },
+  '560058': { zone:'W', main:'Peenya Industrial Estate',      sub:['Tumkur Road industrial belt'] },
+  '560059': { zone:'S', main:'RV Niketan',                    sub:['Banashankari Stage 3'] },
+  '560060': { zone:'W', main:'Rajarajeshwari Nagar',          sub:['BEML Layout','Ideal Homes'] },
+  '560061': { zone:'S', main:'Subramanyapura',                sub:['Uttarahalli Road areas'] },
+  '560062': { zone:'S', main:'Konanakunte',                   sub:['Anjanapura','ISRO Layout'] },
+  '560063': { zone:'N', main:'Yelahanka New Town',            sub:['Attur Layout','CRPF Campus'] },
+  '560064': { zone:'N', main:'Yelahanka',                     sub:['Allalasandra','Puttenahalli'] },
+  '560065': { zone:'N', main:'Bagalur',                       sub:['Aerospace Park surroundings'] },
+  '560066': { zone:'E', main:'Whitefield',                    sub:['ITPL','Kadugodi','Hope Farm'] },
+  '560067': { zone:'E', main:'Whitefield Railway Station',    sub:['Kadugodi extension'] },
+  '560068': { zone:'S', main:'Bommanahalli',                  sub:['Hongasandra','Begur Road'] },
+  '560069': { zone:'S', main:'Jayanagar East',                sub:['South End Circle'] },
+  '560070': { zone:'S', main:'Banashankari Stage I',          sub:['Kathriguppe'] },
+  '560071': { zone:'E', main:'Domlur / HAL',                  sub:['Domlur Layout','Embassy Golf Links'] },
+  '560072': { zone:'W', main:'Nagarbhavi',                    sub:['Moodalapalya','Naagarabhaavi Circle'] },
+  '560073': { zone:'W', main:'Nagasandra',                    sub:['Madanayakanahalli'] },
+  '560074': { zone:'S', main:'Bannerghatta Road',             sub:['Hulimavu','Gottigere'] },
+  '560075': { zone:'E', main:'New Thippasandra',              sub:['CV Raman Nagar nearby'] },
+  '560076': { zone:'S', main:'BTM Layout',                    sub:['Stage 1 & 2','Madiwala'] },
+  '560077': { zone:'N', main:'Kothanur',                      sub:['Hennur Road belt'] },
+  '560078': { zone:'S', main:'JP Nagar',                      sub:['JP Nagar Phases 1-8'] },
+  '560079': { zone:'W', main:'Basaveshwaranagar West',        sub:['Kurubarahalli'] },
+  '560080': { zone:'N', main:'Sadashivanagar',                sub:['Armane Nagar'] },
+  '560081': { zone:'S', main:'Electronics City Phase 1',      sub:['Tech parks and residential layouts'] },
+  '560082': { zone:'S', main:'JP Nagar South',                sub:['Arekere surroundings'] },
+  '560083': { zone:'S', main:'Bannerghatta',                  sub:['Jigani Road belt'] },
+  '560084': { zone:'N', main:'St Thomas Town',                sub:['Lingarajapuram','HBR Layout nearby'] },
+  '560085': { zone:'S', main:'Banashankari Stage II',         sub:['Girinagar'] },
+  '560086': { zone:'W', main:'Mahalakshmi Layout',            sub:['Nandini Layout'] },
+  '560087': { zone:'E', main:'Varthur',                       sub:['Gunjur','Balagere'] },
+  '560088': { zone:'N', main:'Hesaraghatta',                  sub:['Hessarghatta Lake surroundings'] },
+  '560089': { zone:'W', main:'Kengeri Upanagara',             sub:['Dubasipalya'] },
+  '560090': { zone:'W', main:'Chikkabidarakallu',             sub:['Jalahalli Cross surroundings'] },
+  '560091': { zone:'N', main:'Vidyaranyapura',                sub:['AMS Layout','BEL surroundings'] },
+  '560092': { zone:'N', main:'Sahakar Nagar',                 sub:['Kodigehalli'] },
+  '560093': { zone:'E', main:'CV Raman Nagar',                sub:['DRDO Township'] },
+  '560094': { zone:'N', main:'RMV 2nd Stage',                 sub:['Dollars Colony'] },
+  '560095': { zone:'S', main:'Koramangala Industrial Layout', sub:['Sony World Junction surroundings'] },
+  '560096': { zone:'W', main:'Nagarbhavi 2nd Stage',          sub:['Ullal Main Road'] },
+  '560097': { zone:'N', main:'Vidyaranyapura North',          sub:['MS Palya'] },
+  '560098': { zone:'W', main:'Rajarajeshwari Nagar West',     sub:['BHEL Layout'] },
+  '560099': { zone:'S', main:'Electronics City',              sub:['Hebbagodi','Bommasandra'] },
+  '560100': { zone:'S', main:'Electronic City',               sub:['Phase 1 & Phase 2'] },
+  '560101': { zone:'E', main:'Whitefield Hope Farm',          sub:['Hosa Road','Channasandra'] },
+  '560102': { zone:'S', main:'HSR Layout',                    sub:['Sector 1-7'] },
+  '560103': { zone:'E', main:'Bellandur',                     sub:['ORR Tech Corridor'] },
+  '560104': { zone:'S', main:'Bommasandra Industrial Area',   sub:['Jigani Industrial belt'] },
+  '560105': { zone:'S', main:'Jigani',                        sub:['APC Circle','industrial layouts'] },
+  '560106': { zone:'S', main:'Anekal',                        sub:['Chandapura nearby'] },
+  '560107': { zone:'S', main:'Attibele',                      sub:['Karnataka-Tamil Nadu border area'] },
+  '560108': { zone:'W', main:'Nelamangala outskirts',         sub:['Industrial outskirts'] },
+  '560109': { zone:'W', main:'Bidadi Road belt',              sub:['Mysore Road outskirts'] },
+  '560110': { zone:'N', main:'Devanahalli outskirts',         sub:['Airport peripheral zones'] },
+  '560111': { zone:'E', main:'Hoskote outskirts',             sub:['Rural east Bengaluru belt'] },
+  '560112': { zone:'S', main:'Kanakapura Road outskirts',     sub:['Kaggalipura belt'] },
+  '560113': { zone:'E', main:'Sarjapur outskirts',            sub:['Rural Sarjapur clusters'] },
+  '560114': { zone:'N', main:'North Bengaluru rural belt',    sub:['Airport growth corridor'] },
+  '560115': { zone:'S', main:'South Bengaluru rural belt',    sub:['Bannerghatta outskirts'] },
+  '560116': { zone:'S', main:'Kaggalipura',                   sub:['Bolare','Somanhalli','Taralu','Thattekuppe'] }
 };
 
 /* The 5 cardinal zones (Central / North / South / East / West) are generated at
@@ -1343,6 +1456,246 @@ $('#toolClear').addEventListener('click', () => {
 
 $('#measureFinishBtn').addEventListener('click', () => measureTool.stop());
 $('#measureClearBtn').addEventListener('click', () => measureTool.clear());
+
+/* ============================================================================
+   Bengaluru Zone Manager (BZM) panel — tabs, filter chips, search, list rendering
+   ============================================================================ */
+const ZONE_META = {
+  C: { name:'Central', cssVar:'--zC' },
+  N: { name:'North',   cssVar:'--zN' },
+  E: { name:'East',    cssVar:'--zE' },
+  S: { name:'South',   cssVar:'--zS' },
+  W: { name:'West',    cssVar:'--zW' }
+};
+const ZONE_ORDER = ['C','N','E','S','W'];
+
+const bzmState = {
+  zoneFilter: 'ALL',   // 'ALL' | 'C' | 'N' | 'E' | 'S' | 'W'
+  tab: 'zones',        // 'zones' | 'areas' | 'pincodes'
+  search: ''
+};
+
+/* Build a flat list of every locality (each main + each sub-area) so the Areas
+   tab can show one row per locality, and so we can compute a real "Areas" count. */
+const ALL_LOCALITIES = (() => {
+  const arr = [];
+  for (const [pin, info] of Object.entries(PINCODE_AREAS)) {
+    arr.push({ name: info.main, pincode: pin, zone: info.zone, kind:'main' });
+    (info.sub || []).forEach(s => arr.push({ name: s, pincode: pin, zone: info.zone, kind:'sub' }));
+  }
+  return arr;
+})();
+
+/* Pre-grouped pincodes by zone for the Zones tab */
+function pincodesByZone(zoneKey) {
+  return Object.keys(PINCODE_AREAS).filter(p => PINCODE_AREAS[p].zone === zoneKey).sort();
+}
+
+/* ---------- Stats card numbers ---------- */
+function refreshBzmStats() {
+  const filter = bzmState.zoneFilter;
+  const matchZone = z => filter === 'ALL' || z === filter;
+  const pincodes = Object.keys(PINCODE_AREAS).filter(p => matchZone(PINCODE_AREAS[p].zone));
+  const areas = ALL_LOCALITIES.filter(l => matchZone(l.zone));
+  $('#statPincodes').textContent = pincodes.length;
+  $('#statAreas').textContent = areas.length;
+  $('#statZones').textContent = filter === 'ALL' ? ZONE_ORDER.length : 1;
+  $('#bzmSub').innerHTML = `${areas.length} localities &bull; ${filter==='ALL' ? '5 zones' : ZONE_META[filter].name + ' zone'} &bull; Draw custom zones`;
+}
+
+/* ---------- Renderers ---------- */
+function renderBzmZonesTab() {
+  const list = $('#bzmList');
+  const filter = bzmState.zoneFilter;
+  const q = bzmState.search.toLowerCase().trim();
+  const visibleKeys = ZONE_ORDER.filter(k => filter === 'ALL' || filter === k);
+
+  // Apply search: only show zones that contain a matching pincode/area
+  const filtered = visibleKeys.filter(k => {
+    if (!q) return true;
+    if (ZONE_META[k].name.toLowerCase().includes(q)) return true;
+    const pins = pincodesByZone(k);
+    if (pins.some(p => p.includes(q))) return true;
+    return ALL_LOCALITIES.some(l => l.zone === k && l.name.toLowerCase().includes(q));
+  });
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty">No zones match your search.</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(k => {
+    const meta = ZONE_META[k];
+    const color = getCSS(meta.cssVar);
+    const pins = pincodesByZone(k);
+    const areaList = ALL_LOCALITIES.filter(l => l.zone === k);
+    const previewPins = pins.slice(0, 6);
+    const morePins = pins.length - previewPins.length;
+    const previewAreas = areaList.slice(0, 6).map(a => a.name);
+    const moreAreas = areaList.length - previewAreas.length;
+    return `
+      <div class="bzm-zone-card" data-zone="${k}">
+        <div class="zhead">
+          <span class="zdot" style="background:${color};color:${color}"></span>
+          <span class="zname">${escapeHTML(meta.name)}</span>
+          <span class="zbadge z${k}">${k}</span>
+        </div>
+        <div class="zmeta">
+          <span><b>${areaList.length}</b> areas</span>
+          <span><b>${pins.length}</b> pincodes</span>
+        </div>
+        <div class="zpinchips">
+          ${previewPins.map(p => `<span class="bzm-pinchip">${p}</span>`).join('')}
+          ${morePins > 0 ? `<span class="zmore">+${morePins} more</span>` : ''}
+        </div>
+        <div class="zareas">
+          ${previewAreas.map(a => `<span class="area-tag">${escapeHTML(a)}</span>`).join('')}
+          ${moreAreas > 0 ? `<span class="zmore">+${moreAreas} more</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Click a zone card -> set filter to that zone (and stay on Zones tab)
+  list.querySelectorAll('.bzm-zone-card').forEach(card => {
+    card.addEventListener('click', () => setBzmZoneFilter(card.dataset.zone));
+  });
+}
+
+function renderBzmAreasTab() {
+  const list = $('#bzmList');
+  const filter = bzmState.zoneFilter;
+  const q = bzmState.search.toLowerCase().trim();
+
+  let items = ALL_LOCALITIES.filter(l => filter === 'ALL' || l.zone === filter);
+  if (q) {
+    items = items.filter(l =>
+      l.name.toLowerCase().includes(q) ||
+      l.pincode.includes(q) ||
+      ZONE_META[l.zone].name.toLowerCase().includes(q)
+    );
+  }
+  items.sort((a, b) => a.name.localeCompare(b.name));
+
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty">No areas match your search.</div>';
+    return;
+  }
+
+  // Soft cap to keep the DOM light when 700+ rows match
+  const MAX = 250;
+  const shown = items.slice(0, MAX);
+
+  list.innerHTML = shown.map(l => {
+    const color = getCSS(ZONE_META[l.zone].cssVar);
+    return `
+      <div class="bzm-row" data-zone="${l.zone}" data-pin="${l.pincode}">
+        <span class="rdot" style="background:${color};color:${color}"></span>
+        <div class="rmain">
+          <div class="rname">${escapeHTML(l.name)}</div>
+          <div class="rsub">${l.pincode}</div>
+        </div>
+        <span class="zbadge z${l.zone}">${ZONE_META[l.zone].name}</span>
+      </div>
+    `;
+  }).join('') + (items.length > MAX ? `<div class="empty">Showing ${MAX} of ${items.length}. Refine your search to see more.</div>` : '');
+
+  list.querySelectorAll('.bzm-row').forEach(row => {
+    row.addEventListener('click', () => setBzmZoneFilter(row.dataset.zone));
+  });
+}
+
+function renderBzmPincodesTab() {
+  const list = $('#bzmList');
+  const filter = bzmState.zoneFilter;
+  const q = bzmState.search.toLowerCase().trim();
+
+  let items = Object.entries(PINCODE_AREAS).map(([pin, info]) => ({
+    pincode: pin, zone: info.zone, main: info.main, areaCount: 1 + (info.sub||[]).length
+  }));
+  items = items.filter(it => filter === 'ALL' || it.zone === filter);
+  if (q) {
+    items = items.filter(it =>
+      it.pincode.includes(q) ||
+      it.main.toLowerCase().includes(q) ||
+      ZONE_META[it.zone].name.toLowerCase().includes(q)
+    );
+  }
+  items.sort((a, b) => a.pincode.localeCompare(b.pincode));
+
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty">No pincodes match your search.</div>';
+    return;
+  }
+
+  list.innerHTML = items.map(it => {
+    const color = getCSS(ZONE_META[it.zone].cssVar);
+    return `
+      <div class="bzm-row" data-zone="${it.zone}" data-pin="${it.pincode}">
+        <span class="rdot" style="background:${color};color:${color}"></span>
+        <div class="rmain">
+          <div class="rname">${it.pincode}</div>
+          <div class="rsub">${it.areaCount} ${it.areaCount===1?'area':'areas'} &bull; ${escapeHTML(it.main)}</div>
+        </div>
+        <span class="zbadge z${it.zone}">${ZONE_META[it.zone].name}</span>
+      </div>
+    `;
+  }).join('');
+
+  list.querySelectorAll('.bzm-row').forEach(row => {
+    row.addEventListener('click', () => {
+      // Auto-select related zone, and offer to add this pincode as a custom zone
+      setBzmZoneFilter(row.dataset.zone);
+      $('#pinInput').value = row.dataset.pin;
+      $('#pinInput').focus();
+    });
+  });
+}
+
+function renderBzm() {
+  refreshBzmStats();
+  // Search bar visible only for Areas / Pincodes tabs (per master prompt)
+  $('#bzmSearchWrap').style.display = (bzmState.tab === 'zones') ? 'none' : '';
+  if (bzmState.tab === 'zones')         renderBzmZonesTab();
+  else if (bzmState.tab === 'areas')    renderBzmAreasTab();
+  else                                  renderBzmPincodesTab();
+}
+
+/* ---------- State setters ---------- */
+function setBzmZoneFilter(zoneKey) {
+  bzmState.zoneFilter = zoneKey;
+  $$('.bzm-chip').forEach(c => {
+    const target = c.dataset.zfilter;
+    c.classList.toggle('active', target === zoneKey);
+    // Add/remove zone-specific tint class
+    ['zC','zN','zE','zS','zW'].forEach(cls => c.classList.remove(cls));
+    if (c.classList.contains('active') && target !== 'ALL') c.classList.add('z' + target);
+  });
+  renderBzm();
+}
+
+function setBzmTab(tabKey) {
+  bzmState.tab = tabKey;
+  $$('.bzm-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabKey));
+  bzmState.search = '';
+  if ($('#bzmSearch')) $('#bzmSearch').value = '';
+  renderBzm();
+}
+
+/* ---------- Wire up ---------- */
+$$('.bzm-chip').forEach(chip => {
+  chip.addEventListener('click', () => setBzmZoneFilter(chip.dataset.zfilter));
+});
+$$('.bzm-tab').forEach(tab => {
+  tab.addEventListener('click', () => setBzmTab(tab.dataset.tab));
+});
+$('#bzmSearch').addEventListener('input', e => {
+  bzmState.search = e.target.value;
+  renderBzm();
+});
+
+// Initial render — happens after CSS variables are loaded by the document
+renderBzm();
 
 /* ---------- Init ---------- */
 (async () => {
