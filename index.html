@@ -89,6 +89,13 @@
   .edit-form input[type=text]{padding:6px 8px;font-size:12px}
   .edit-form button{padding:6px 10px;font-size:12px}
 
+  .palette-grid{display:flex;flex-wrap:wrap;gap:4px;padding:4px 0;max-width:100%}
+  .palette-swatch{width:18px;height:18px;border-radius:3px;cursor:pointer;border:2px solid transparent;transition:transform .1s,border-color .1s;flex-shrink:0}
+  .palette-swatch:hover{transform:scale(1.18)}
+  .palette-swatch.selected{border-color:#fff;box-shadow:0 0 0 1px #000 inset}
+  .palette-toggle{font-size:10px;color:var(--accent);cursor:pointer;user-select:none;margin-left:auto}
+  .palette-toggle:hover{text-decoration:underline}
+
   .combined-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .stat-tile{background:var(--bg-3);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
   .stat-tile .label{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px}
@@ -289,6 +296,12 @@
         <input id="nameInput" type="text" placeholder="Zone name (optional)" />
       </div>
       <div class="row" style="margin-top:8px">
+        <span style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-right:6px">Color:</span>
+        <input type="color" id="newColor" value="#4cc9ff" style="width:34px;height:30px;padding:0;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer" />
+        <span class="palette-toggle" id="newPaletteToggle">Pick from palette ▾</span>
+      </div>
+      <div class="palette-grid" id="newPalette" style="display:none"></div>
+      <div class="row" style="margin-top:8px">
         <button id="addZoneBtn" style="width:100%">+ Add Zone</button>
       </div>
       <div class="help">
@@ -303,6 +316,9 @@
         <span style="flex:1"></span>
         <button id="clearAllBtn" class="ghost" style="padding:4px 8px;font-size:11px">Clear all</button>
       </h2>
+      <div id="combineHint" style="font-size:11px;color:var(--text-3);background:var(--bg-1);border:1px dashed var(--border);border-radius:6px;padding:8px 10px;margin-bottom:10px;line-height:1.5">
+        💡 <b style="color:var(--text-2)">To combine zones:</b> add 2+ pincodes above, then tick the checkbox on each zone card below — a <b style="color:var(--warn)">Combine</b> button will appear here.
+      </div>
       <button type="button" id="combineBtn" style="display:none;width:100%;margin-bottom:10px;background:linear-gradient(135deg,var(--warn) 0%,#ff8a4c 100%);color:#0b0f1a;padding:10px 14px;font-size:13px">⤓ Combine 0 selected zones</button>
       <div id="zoneList"><div class="empty">No zones yet. Create one above.</div></div>
     </div>
@@ -412,11 +428,18 @@ const MAP_CENTER = [12.9716, 77.5946];
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
 const OVERPASS  = 'https://overpass-api.de/api/interpreter';
 const COLORS = [
+  /* Brights */
   '#4cc9ff','#7c5cff','#ffb74c','#2ee6a3','#ff6b9d','#a78bfa',
   '#34d399','#fb7185','#60a5fa','#fbbf24','#f97316','#10b981',
   '#06b6d4','#8b5cf6','#ec4899','#84cc16','#eab308','#f43f5e',
   '#22d3ee','#a855f7','#14b8a6','#f59e0b','#d946ef','#0ea5e9',
-  '#3b82f6','#ef4444','#65a30d','#0d9488','#9333ea','#db2777'
+  '#3b82f6','#ef4444','#65a30d','#0d9488','#9333ea','#db2777',
+  /* Material / vivid */
+  '#06ffa5','#ff006e','#3a86ff','#fb5607','#8338ec','#ffbe0b',
+  '#ff4081','#651fff','#00bfa5','#ff6f00','#aa00ff','#c51162',
+  '#1e88e5','#43a047','#fdd835','#fb8c00','#e53935','#d81b60',
+  '#8e24aa','#3949ab','#039be5','#00897b','#7cb342','#c0ca33',
+  '#ffb300','#f4511e','#6d4c41','#546e7a','#00acc1','#5e35b1'
 ];
 
 /* Bengaluru pincode -> main area + sub-areas + cardinal zone (C/N/E/S/W)
@@ -617,6 +640,27 @@ function modalPrompt({title, help, value=''}) {
 }
 
 /* ---------- API: Nominatim ---------- */
+/* Persistent boundary cache backed by localStorage so repeat sessions
+   (and the cardinal-zone "real boundary" path which fetches ~25 pincodes
+   per zone) don't have to round-trip Nominatim every time. */
+const LS_BOUNDARY_KEY = 'pzm_boundary_v1';
+function lsLoadBoundaries() {
+  try { return JSON.parse(localStorage.getItem(LS_BOUNDARY_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+function lsSaveBoundary(pincode, payload) {
+  try {
+    const all = lsLoadBoundaries();
+    all[pincode] = payload;
+    localStorage.setItem(LS_BOUNDARY_KEY, JSON.stringify(all));
+  } catch(e) { /* quota exceeded — ignore */ }
+}
+// Preload anything cached from previous sessions
+(() => {
+  const all = lsLoadBoundaries();
+  for (const [p, payload] of Object.entries(all)) boundaryCache.set(p, payload);
+})();
+
 async function fetchPincodeBoundary(pincode) {
   if (boundaryCache.has(pincode)) return boundaryCache.get(pincode);
   const url = `${NOMINATIM}/search?postalcode=${encodeURIComponent(pincode)}&country=India&polygon_geojson=1&format=json&addressdetails=1&limit=5`;
@@ -626,6 +670,7 @@ async function fetchPincodeBoundary(pincode) {
   const withPoly = data.find(d => d.geojson && (d.geojson.type==='Polygon' || d.geojson.type==='MultiPolygon'));
   const chosen = withPoly || data[0] || null;
   boundaryCache.set(pincode, chosen);
+  if (chosen) lsSaveBoundary(pincode, chosen);
   return chosen;
 }
 
@@ -842,7 +887,7 @@ async function loadComponentForPincode(pincode) {
   };
 }
 
-async function addZone(pincode, customName=null) {
+async function addZone(pincode, customName=null, customColor=null) {
   pincode = String(pincode).trim();
   if (!/^\d{6}$/.test(pincode)) { toast('Enter a valid 6-digit pincode', 'error'); return; }
   for (const z of zones.values()) {
@@ -852,7 +897,7 @@ async function addZone(pincode, customName=null) {
   let comp;
   try { comp = await loadComponentForPincode(pincode); }
   catch(e) { hideLoading(); toast(e.message, 'error'); return; }
-  const zone = new Zone({ name: customName || comp.name || pincode, components:[comp] });
+  const zone = new Zone({ name: customName || comp.name || pincode, components:[comp], color: customColor || null });
   zone.expanded = true; // open the area panel by default so the user sees every main + sub area
   zones.set(zone.id, zone);
   zone.draw();
@@ -866,6 +911,7 @@ async function addZone(pincode, customName=null) {
 async function combineSelected() {
   try {
     const sel = [...zones.values()].filter(z => z.selected);
+    console.log('[combine] selected zones:', sel.length, sel.map(z=>z.name));
     if (sel.length < 2) { toast('Tick at least 2 zones to combine', 'warn'); return; }
     const defaultName = sel.map(z => z.name).join(' + ');
     const name = await modalPrompt({
@@ -873,15 +919,26 @@ async function combineSelected() {
       help:`Combining ${sel.length} zones / ${[...new Set(sel.flatMap(z=>z.pincodes))].length} pincodes. Originals will be removed.`,
       value: defaultName
     });
-    if (!name) return;
+    console.log('[combine] modal returned name:', name);
+    if (!name) { toast('Combine cancelled', 'info', 1500); return; }
     // Flatten components, dedup by pincode
     const seen = new Set();
     const components = [];
     sel.forEach(z => z.components.forEach(c => {
       if (!seen.has(c.pincode)) { seen.add(c.pincode); components.push(c); }
     }));
-    if (components.length < 2) { toast('Need at least 2 distinct pincodes', 'warn'); return; }
-    const zone = new Zone({ name, components });
+    console.log('[combine] flattened components:', components.length, components.map(c=>c.pincode));
+    if (components.length < 2) {
+      toast('Need at least 2 distinct pincodes to combine', 'warn'); return;
+    }
+    let zone;
+    try {
+      zone = new Zone({ name, components });
+    } catch (zErr) {
+      console.error('[combine] Zone construction failed:', zErr);
+      toast('Combine failed: could not union the zone geometries — they may be invalid. Try toggling the zones off and back on.', 'error', 5500);
+      return;
+    }
     zones.set(zone.id, zone);
     zone.draw();
     // Remove the originals so the user sees a clean single combined zone
@@ -890,8 +947,8 @@ async function combineSelected() {
     map.fitBounds(zone.layer.getBounds(), { padding:[40,40] });
     toast(`Combined zone "${name}" created (${components.length} pincodes)`, 'success');
   } catch (err) {
-    console.error('Combine failed:', err);
-    toast('Combine failed: ' + err.message, 'error');
+    console.error('[combine] failed:', err);
+    toast('Combine failed: ' + (err.message||err), 'error');
   }
 }
 
@@ -963,6 +1020,10 @@ function renderZoneList() {
             <input type="color" value="${z.color}" id="ec_${z.id}" />
             <input type="text" value="${escapeHTML(z.name)}" id="en_${z.id}" placeholder="Zone name" />
           </div>
+          <div class="row" style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 2px">Pick a color (60 options)</div>
+          <div class="palette-grid" id="ep_${z.id}">
+            ${COLORS.map(c => `<span class="palette-swatch ${c.toLowerCase()===z.color.toLowerCase()?'selected':''}" data-color="${c}" style="background:${c}" title="${c}"></span>`).join('')}
+          </div>
           <div class="row">
             <button data-action="save">Save</button>
             <button class="ghost" data-action="cancelEdit">Cancel</button>
@@ -1026,6 +1087,16 @@ function renderZoneList() {
       card.querySelector('[data-action=cancelEdit]').addEventListener('click', () => {
         z.editing=false; renderZoneList();
       });
+      // Palette swatches: click → set the color picker + selected state
+      card.querySelectorAll(`#ep_${z.id} .palette-swatch`).forEach(sw => {
+        sw.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const c = sw.dataset.color;
+          $('#ec_'+z.id).value = c;
+          card.querySelectorAll(`#ep_${z.id} .palette-swatch`).forEach(s => s.classList.remove('selected'));
+          sw.classList.add('selected');
+        });
+      });
     }
     list.appendChild(card);
   }
@@ -1038,6 +1109,9 @@ function updateHeader() {
   const btn = $('#combineBtn');
   btn.textContent = `⤓ Combine ${sel} selected zones into 1`;
   btn.style.display = sel >= 2 ? 'block' : 'none';
+  // Hide the hint banner once a combine is possible OR no zones at all
+  const hint = $('#combineHint');
+  if (hint) hint.style.display = (zones.size === 0 || sel >= 2) ? 'none' : '';
 }
 
 let combinedPreviewLayer = null;
@@ -1081,6 +1155,9 @@ function recomputeCombined() {
 }
 
 /* ---------- Cardinal Zones (Central / N / S / E / W) ---------- */
+/* Real boundaries: union of all pincode polygons that belong to the zone in
+   the curated PINCODE_AREAS table. Lazy-fetched from Nominatim, then cached
+   for the session. Falls back to wedge sectors only if nothing loads. */
 function sectorPolygon(centerCoord, radiusKm, startBearing, endBearing, steps=64) {
   const center = turf.point(centerCoord);
   const coords = [center.geometry.coordinates];
@@ -1095,21 +1172,13 @@ function sectorPolygon(centerCoord, radiusKm, startBearing, endBearing, steps=64
 }
 
 function buildCardinalZones() {
+  /* Wedge fallback only — used if the real polygon fetch fails for a zone. */
   const cityFeat = turf.feature(bengaluruGeo);
-
-  // Real city centroid (so sectors radiate from the geographic center of Bengaluru,
-  // not from a hand-picked point).
-  const cc = turf.centroid(cityFeat).geometry.coordinates; // [lng, lat]
-
-  // Central zone = a 4 km circle around the centroid, clipped to the city.
+  const cc = turf.centroid(cityFeat).geometry.coordinates;
   const centralCircle = turf.circle(cc, 4, { steps: 96, units: 'kilometers' });
   let central;
   try { central = turf.intersect(centralCircle, cityFeat) || centralCircle; }
   catch (e) { central = centralCircle; }
-
-  // Build a wedge polygon from the centroid for a given bearing range.
-  // Radius is large enough (60 km) to fully cover Bengaluru in every direction;
-  // the wedge is then intersected with the city to follow the real outline.
   const wedge = (startBearing, endBearing) => {
     const radiusKm = 60, steps = 96;
     let s = startBearing, e = endBearing;
@@ -1123,39 +1192,82 @@ function buildCardinalZones() {
     ring.push(cc);
     return turf.polygon([ring]);
   };
-
-  // Standard 4-quadrant compass split (NE-NW = North, NE-SE = East, etc.) so the
-  // resulting boundaries are clean diagonals, exactly what is expected of cardinal
-  // zones.  Each wedge is clipped to the city, then central is subtracted.
   const wedges = {
-    N: wedge(-45,  45),   // 315° -> 45°
-    E: wedge( 45, 135),
-    S: wedge(135, 225),
-    W: wedge(225, 315)
+    N: wedge(-45,  45), E: wedge(45, 135), S: wedge(135, 225), W: wedge(225, 315)
   };
-
   const out = { C: central };
-  for (const k of ['N', 'E', 'S', 'W']) {
+  for (const k of ['N','E','S','W']) {
     let z = wedges[k];
-    try { z = turf.intersect(z, cityFeat) || z; } catch (e) { /* keep wedge */ }
-    try { z = turf.difference(z, central) || z; } catch (e) { /* keep clipped */ }
+    try { z = turf.intersect(z, cityFeat) || z; } catch (e) {}
+    try { z = turf.difference(z, central) || z; } catch (e) {}
     out[k] = z;
   }
   return out;
 }
 
-let cardinalZonesGeo = null;
-function showCardinalZone(key, on) {
-  if (!cardinalZonesGeo) cardinalZonesGeo = buildCardinalZones();
+/* Build a real cardinal zone outline by unioning every pincode polygon
+   belonging to that zone (per PINCODE_AREAS). */
+const cardinalRealCache = {}; // 'C'|'N'|'E'|'S'|'W' -> GeoJSON geometry
+async function getRealCardinalZone(key) {
+  if (cardinalRealCache[key]) return cardinalRealCache[key];
+  const pincodes = Object.entries(PINCODE_AREAS)
+    .filter(([,info]) => info.zone === key)
+    .map(([p]) => p);
+  if (!pincodes.length) return null;
+
+  let union = null;
+  let okCount = 0, failCount = 0, done = 0;
+  for (const p of pincodes) {
+    try {
+      const res = await fetchPincodeBoundary(p);
+      if (res && res.geojson && (res.geojson.type === 'Polygon' || res.geojson.type === 'MultiPolygon')) {
+        const f = turf.feature(res.geojson);
+        if (!union) { union = f; okCount++; }
+        else {
+          try { union = turf.union(union, f) || union; okCount++; }
+          catch(unionErr) { console.warn('union failed at', p, unionErr); failCount++; }
+        }
+      } else { failCount++; }
+    } catch(e) { failCount++; console.warn('boundary failed at', p, e); }
+    done++;
+    showLoading(`${ZONE_META[key].name} zone… ${done}/${pincodes.length} pincodes (${okCount} ok)`);
+    // Polite rate-limit to Nominatim — its public policy is ~1 req/sec.
+    // Use 350ms which is a fair compromise for responsiveness.
+    if (done < pincodes.length) await new Promise(r => setTimeout(r, 350));
+  }
+  if (!union || okCount < 3) {
+    console.warn(`Cardinal zone ${key}: only ${okCount}/${pincodes.length} polygons loaded — falling back`);
+    return null;
+  }
+  // Clip to the city polygon so the outline hugs Bengaluru
+  let clipped;
+  try { clipped = turf.intersect(union, turf.feature(bengaluruGeo)); } catch(e) { clipped = null; }
+  cardinalRealCache[key] = (clipped ? clipped.geometry : union.geometry);
+  return cardinalRealCache[key];
+}
+
+let cardinalZonesGeo = null; // wedge fallback set
+async function showCardinalZone(key, on) {
   if (on) {
     if (cardinalLayers[key]) return;
+    showLoading(`Loading ${ZONE_META[key].name} zone boundary…`);
+    let geom = null;
+    try { geom = await getRealCardinalZone(key); } catch(e) { console.error(e); }
+    if (!geom) {
+      if (!cardinalZonesGeo) cardinalZonesGeo = buildCardinalZones();
+      const wedge = cardinalZonesGeo[key];
+      geom = wedge && (wedge.geometry || wedge);
+      toast(`Using approximate sector for ${ZONE_META[key].name} (real polygons unavailable)`, 'warn');
+    } else {
+      toast(`${ZONE_META[key].name} zone built from real pincode boundaries`, 'success', 2500);
+    }
+    hideLoading();
+    if (!geom) return;
     const colors = { C:getCSS('--zC'), N:getCSS('--zN'), S:getCSS('--zS'), E:getCSS('--zE'), W:getCSS('--zW') };
     const labels = { C:'Central', N:'North', S:'South', E:'East', W:'West' };
-    const f = cardinalZonesGeo[key];
-    const lyr = L.geoJSON(f, { style:{ color:colors[key], weight:2, fillOpacity:0.12, fillColor:colors[key] } }).addTo(map);
-    // Label at centroid
+    const lyr = L.geoJSON(geom, { style:{ color:colors[key], weight:2.5, fillOpacity:0.14, fillColor:colors[key] } }).addTo(map);
     try {
-      const c = turf.centroid(f).geometry.coordinates;
+      const c = turf.centroid(turf.feature(geom)).geometry.coordinates;
       const lbl = L.marker([c[1],c[0]], {
         icon:L.divIcon({className:'zone-label', html:`<div style="font-size:13px">${labels[key]}<br/><span class="pin" style="color:${colors[key]}">${labels[key].toUpperCase()} ZONE</span></div>`, iconSize:[120,30], iconAnchor:[60,15]}),
         interactive:false
@@ -1369,13 +1481,37 @@ const measureTool = {
       const seg = a.distanceTo(b) / 1000;
       total += seg;
       segments.push(seg);
-      const line = L.polyline([a, b], { color:'#ffb74c', weight:3, dashArray:'4 4' });
+      const insertAt = i; // capture for click closure
+      const line = L.polyline([a, b], { color:'#ffb74c', weight:4, opacity:0.85, dashArray:'4 4' });
+      // Click on the segment (while measure tool active) -> INSERT a draggable point
+      // at the click location between the two endpoints. This makes the path bendy.
+      line.on('click', (e) => {
+        if (!measureTool.active) return;
+        L.DomEvent.stopPropagation(e);
+        measureTool.insertPoint(insertAt, e.latlng);
+      });
+      // Right-click on the segment -> delete just THIS segment's later vertex
+      // (collapses the bend). If only 2 points exist, clears the whole thing.
       line.on('contextmenu', (e) => {
         L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e);
-        // Right-click on a segment line deletes the whole measurement
-        this.clear();
+        if (this.points.length <= 2) { this.clear(); return; }
+        // Remove the second endpoint of this segment
+        this.removePoint(insertAt);
       });
       this.segmentLayer.addLayer(line);
+      // A larger transparent "hit" line so right-click is easier to land on
+      const hit = L.polyline([a, b], { color:'#000', weight:18, opacity:0 });
+      hit.on('click', (e) => {
+        if (!measureTool.active) return;
+        L.DomEvent.stopPropagation(e);
+        measureTool.insertPoint(insertAt, e.latlng);
+      });
+      hit.on('contextmenu', (e) => {
+        L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e);
+        if (this.points.length <= 2) { this.clear(); return; }
+        this.removePoint(insertAt);
+      });
+      this.segmentLayer.addLayer(hit);
       const mid = L.latLng((a.lat + b.lat)/2, (a.lng + b.lng)/2);
       const lbl = L.marker(mid, {
         icon: L.divIcon({ className:'measure-label', html:`<div class="measure-tip">${seg.toFixed(2)} km</div>`, iconSize:[60,18], iconAnchor:[30,9] }),
@@ -1386,6 +1522,23 @@ const measureTool = {
     this.updateInfo(this._statsHtml(total, segments));
   },
 
+  insertPoint(idx, latlng) {
+    const marker = L.marker(latlng, {
+      icon: this._icon(),
+      draggable: true,
+      autoPan: true,
+      zIndexOffset: 1000
+    }).addTo(map);
+    marker.on('drag', () => this.rebuild());
+    marker.on('contextmenu', (e) => {
+      L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e);
+      const i = this.points.indexOf(marker);
+      if (i >= 0) this.removePoint(i);
+    });
+    this.points.splice(idx, 0, marker);
+    this.rebuild();
+  },
+
   _statsHtml(total, segs) {
     const segHtml = segs.length
       ? `<div style="margin-top:4px;font-size:11px;color:var(--text-3)">Segments: ${segs.map((s,i)=>`<span class="area-tag">${i+1}: ${s.toFixed(2)} km</span>`).join('')}</div>`
@@ -1394,7 +1547,10 @@ const measureTool = {
       <div>Points: <b>${this.points.length}</b></div>
       <div>Total distance: <b style="color:var(--accent);font-size:14px">${total.toFixed(2)} km</b></div>
       ${segHtml}
-      <div style="margin-top:6px;font-size:11px;color:var(--text-3)">Drag points to adjust • Right-click point to remove • Right-click line to delete all</div>
+      <div style="margin-top:6px;font-size:11px;color:var(--text-3)">
+        🖱 <b>Drag</b> a point to move it • <b>Click</b> a line to insert a bend •<br/>
+        <b>Right-click</b> a point or line to delete it
+      </div>
     `;
   },
 
@@ -1411,9 +1567,38 @@ const measureTool = {
 };
 
 /* ---------- Wiring ---------- */
+/* Build the create-zone palette grid lazily */
+function buildCreatePalette() {
+  const wrap = $('#newPalette');
+  if (wrap.dataset.built) return;
+  wrap.innerHTML = COLORS.map((c, i) =>
+    `<span class="palette-swatch ${i===0?'selected':''}" data-color="${c}" style="background:${c}" title="${c}"></span>`
+  ).join('');
+  wrap.querySelectorAll('.palette-swatch').forEach(sw => {
+    sw.addEventListener('click', () => {
+      $('#newColor').value = sw.dataset.color;
+      wrap.querySelectorAll('.palette-swatch').forEach(s => s.classList.remove('selected'));
+      sw.classList.add('selected');
+    });
+  });
+  wrap.dataset.built = '1';
+}
+$('#newPaletteToggle').addEventListener('click', () => {
+  buildCreatePalette();
+  const wrap = $('#newPalette');
+  const hidden = wrap.style.display === 'none';
+  wrap.style.display = hidden ? 'flex' : 'none';
+  $('#newPaletteToggle').textContent = hidden ? 'Hide palette ▴' : 'Pick from palette ▾';
+});
+$('#newColor').addEventListener('input', e => {
+  // unselect palette swatches when user picks custom
+  $$('#newPalette .palette-swatch').forEach(s => s.classList.remove('selected'));
+});
+
 $('#addZoneBtn').addEventListener('click', () => {
   const p = $('#pinInput').value, n = $('#nameInput').value.trim() || null;
-  addZone(p, n);
+  const color = $('#newColor').value;
+  addZone(p, n, color);
   $('#pinInput').value=''; $('#nameInput').value='';
 });
 $('#pinInput').addEventListener('keydown', e => { if (e.key==='Enter') $('#addZoneBtn').click(); });
@@ -1426,15 +1611,17 @@ $('#tglBengaluru').addEventListener('change', e => {
   else bengaluruLayer && map.removeLayer(bengaluruLayer);
 });
 
-$('#tglAllZones').addEventListener('change', e => {
+$('#tglAllZones').addEventListener('change', async e => {
   const on = e.target.checked;
-  ['C','N','S','E','W'].forEach(k => {
+  // Sequentially load each zone so Nominatim isn't slammed with 5 parallel batches.
+  for (const k of ['C','N','S','E','W']) {
     const cb = document.querySelector(`.zoneToggle[data-zone="${k}"]`);
-    cb.checked = on; showCardinalZone(k, on);
-  });
+    cb.checked = on;
+    await showCardinalZone(k, on);
+  }
 });
-$$('.zoneToggle').forEach(cb => cb.addEventListener('change', e => {
-  showCardinalZone(e.target.dataset.zone, e.target.checked);
+$$('.zoneToggle').forEach(cb => cb.addEventListener('change', async e => {
+  await showCardinalZone(e.target.dataset.zone, e.target.checked);
   // master toggle reflects state
   const allOn = $$('.zoneToggle').every(c => c.checked);
   $('#tglAllZones').checked = allOn;
