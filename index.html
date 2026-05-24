@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bengaluru Zone Manager</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Turf.js for geo operations -->
+  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+
+  <!-- d3-delaunay for Voronoi polygons -->
+  <script src="https://unpkg.com/d3-delaunay@6.0.4/dist/d3-delaunay.min.js"></script>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ======= TOP BAR ======= -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">B</div>
+      <div>
+        <h1>Bengaluru Zone Manager</h1>
+        <p class="brand-sub">Geo-fencing &amp; serving-area planner</p>
+      </div>
+    </div>
+
+    <div class="topbar-stats">
+      <div class="stat"><span id="stat-zones">5</span><label>Main Zones</label></div>
+      <div class="stat"><span id="stat-pincodes">0</span><label>Pincodes</label></div>
+      <div class="stat"><span id="stat-custom">0</span><label>Custom Sub-zones</label></div>
+      <div class="stat"><span id="stat-area">0</span><label>Total km²</label></div>
+    </div>
+
+    <div class="topbar-actions">
+      <button id="btn-toggle-zones"    class="btn btn-primary">Show Zones</button>
+      <button id="btn-toggle-pincodes" class="btn">Show Pincodes</button>
+      <button id="btn-reset"           class="btn btn-ghost">Reset View</button>
+    </div>
+  </header>
+
+  <!-- ======= MAIN LAYOUT ======= -->
+  <main class="layout">
+
+    <!-- ======= LEFT SIDEBAR ======= -->
+    <aside class="sidebar">
+
+      <nav class="tabs">
+        <button class="tab active" data-tab="zones">Zones</button>
+        <button class="tab" data-tab="pincodes">Pincodes</button>
+        <button class="tab" data-tab="create">Create</button>
+        <button class="tab" data-tab="combine">Combine</button>
+      </nav>
+
+      <!-- TAB: Zones -->
+      <section class="tab-panel active" data-panel="zones">
+        <h3>Main Zones</h3>
+        <p class="muted">Click a zone to highlight on the map.</p>
+        <ul id="zone-list" class="zone-list"></ul>
+
+        <h3 style="margin-top:18px">Custom Sub-zones</h3>
+        <ul id="custom-zone-list" class="zone-list">
+          <li class="empty">No custom zones yet. Create one in the Create tab.</li>
+        </ul>
+      </section>
+
+      <!-- TAB: Pincodes -->
+      <section class="tab-panel" data-panel="pincodes">
+        <h3>Search Pincodes / Areas</h3>
+        <input id="pincode-search" type="text" class="input" placeholder="Search pincode or area name..." />
+        <div class="filter-row">
+          <select id="pincode-zone-filter" class="input">
+            <option value="">All zones</option>
+          </select>
+        </div>
+        <ul id="pincode-list" class="pincode-list"></ul>
+      </section>
+
+      <!-- TAB: Create Zone -->
+      <section class="tab-panel" data-panel="create">
+        <h3>Create Custom Sub-zone</h3>
+        <p class="muted">Pick pincodes from the list, give the zone a name, then save.</p>
+
+        <label>Zone Name</label>
+        <input id="new-zone-name" type="text" class="input" placeholder="e.g. RT Nagar Hub" />
+
+        <label>Zone Color</label>
+        <input id="new-zone-color" type="color" class="input" value="#06b6d4" />
+
+        <label>Search pincodes</label>
+        <input id="create-search" type="text" class="input" placeholder="Filter by pincode/area..." />
+
+        <ul id="create-pincode-list" class="pincode-list checkbox-list"></ul>
+
+        <div class="form-actions">
+          <button id="btn-create-zone" class="btn btn-primary">Create Zone</button>
+          <button id="btn-clear-create" class="btn btn-ghost">Clear</button>
+        </div>
+      </section>
+
+      <!-- TAB: Combine Zones -->
+      <section class="tab-panel" data-panel="combine">
+        <h3>Combine Zones</h3>
+        <p class="muted">Select two or more zones (main or custom) to view combined coverage and total km.</p>
+        <ul id="combine-zone-list" class="zone-list checkbox-list"></ul>
+        <div class="form-actions">
+          <button id="btn-combine"       class="btn btn-primary">Combine &amp; Show</button>
+          <button id="btn-clear-combine" class="btn btn-ghost">Clear</button>
+        </div>
+        <div id="combine-result" class="combine-result hidden"></div>
+      </section>
+
+    </aside>
+
+    <!-- ======= MAP ======= -->
+    <div id="map" class="map"></div>
+
+    <!-- ======= RIGHT INFO PANEL ======= -->
+    <aside id="info-panel" class="info-panel">
+      <div class="info-empty">
+        <p class="muted">Click any pincode or zone on the map to see details here.</p>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- App scripts -->
+  <script src="data/bengaluru.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
