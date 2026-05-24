@@ -3,236 +3,156 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Pincode Zone Manager</title>
+<title>Pincode Zone Manager — Bengaluru</title>
 
-<!-- Leaflet -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<!-- Leaflet.draw for geofencing -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
 
 <style>
   :root {
-    --bg-0: #0b0f1a;
-    --bg-1: #131826;
-    --bg-2: #1a2030;
-    --bg-3: #232a3d;
-    --border: #2a3148;
-    --text-1: #e6ecf5;
-    --text-2: #9aa3b8;
-    --text-3: #6b7388;
-    --accent: #4cc9ff;
-    --accent-2: #7c5cff;
-    --good: #2ecc71;
-    --warn: #f39c12;
-    --bad: #ff5d6c;
+    --bg-0:#0b0f1a; --bg-1:#131826; --bg-2:#1a2030; --bg-3:#232a3d;
+    --border:#2a3148;
+    --text-1:#e6ecf5; --text-2:#9aa3b8; --text-3:#6b7388;
+    --accent:#4cc9ff; --accent-2:#7c5cff;
+    --good:#2ecc71; --warn:#f39c12; --bad:#ff5d6c;
+    --zN:#60a5fa; --zS:#fb7185; --zE:#34d399; --zW:#fbbf24; --zC:#a78bfa;
   }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-0);color:var(--text-1);overflow:hidden}
 
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-0); color: var(--text-1); overflow: hidden; }
+  .app{display:grid;grid-template-columns:380px 1fr;grid-template-rows:56px 1fr;height:100vh}
+  header.top{grid-column:1/-1;background:linear-gradient(90deg,#0e1422 0%,#131826 100%);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:14px;z-index:1000}
+  header .logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent-2) 100%);display:grid;place-items:center;font-weight:700;color:#0b0f1a}
+  header h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.2px}
+  header .sub{font-size:12px;color:var(--text-3);margin-left:4px}
+  header .spacer{flex:1}
+  header .pill{background:var(--bg-2);border:1px solid var(--border);color:var(--text-2);font-size:12px;padding:6px 10px;border-radius:999px}
+  header .pill b{color:var(--text-1)}
 
-  /* ---------- Layout ---------- */
-  .app {
-    display: grid;
-    grid-template-columns: 380px 1fr;
-    grid-template-rows: 56px 1fr;
-    height: 100vh;
-  }
-  header.top {
-    grid-column: 1 / -1;
-    background: linear-gradient(90deg, #0e1422 0%, #131826 100%);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 18px;
-    gap: 14px;
-    z-index: 1000;
-  }
-  header .logo {
-    width: 30px; height: 30px; border-radius: 8px;
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
-    display: grid; place-items: center; font-weight: 700; color: #0b0f1a;
-  }
-  header h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: 0.2px; }
-  header .sub { font-size: 12px; color: var(--text-3); margin-left: 4px; }
-  header .spacer { flex: 1; }
-  header .pill {
-    background: var(--bg-2); border: 1px solid var(--border);
-    color: var(--text-2); font-size: 12px;
-    padding: 6px 10px; border-radius: 999px;
-  }
-  header .pill b { color: var(--text-1); }
+  aside.sidebar{background:var(--bg-1);border-right:1px solid var(--border);overflow-y:auto;padding:14px}
+  aside.sidebar::-webkit-scrollbar{width:8px}
+  aside.sidebar::-webkit-scrollbar-thumb{background:var(--bg-3);border-radius:4px}
 
-  aside.sidebar {
-    background: var(--bg-1);
-    border-right: 1px solid var(--border);
-    overflow-y: auto;
-    padding: 14px;
-  }
-  aside.sidebar::-webkit-scrollbar { width: 8px; }
-  aside.sidebar::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 4px; }
+  main.map-wrap{position:relative}
+  #map{position:absolute;inset:0;background:#0b0f1a}
 
-  main.map-wrap { position: relative; }
-  #map { position: absolute; inset: 0; background: #0b0f1a; }
+  .section{background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px}
+  .section h2{margin:0 0 10px 0;font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.8px;display:flex;align-items:center;gap:8px}
+  .section h2 .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
 
-  /* ---------- Sidebar Sections ---------- */
-  .section { background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
-  .section h2 {
-    margin: 0 0 10px 0; font-size: 12px; font-weight: 600;
-    color: var(--text-2); text-transform: uppercase; letter-spacing: 0.8px;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .section h2 .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .row{display:flex;gap:8px;align-items:center}
+  .row+.row{margin-top:8px}
+  input[type=text],input[type=number]{flex:1;background:var(--bg-3);border:1px solid var(--border);color:var(--text-1);padding:9px 11px;border-radius:8px;font-size:13px;outline:none;transition:border-color .15s;min-width:0}
+  input[type=text]:focus,input[type=number]:focus{border-color:var(--accent)}
+  input::placeholder{color:var(--text-3)}
+  button{background:linear-gradient(135deg,var(--accent) 0%,var(--accent-2) 100%);color:#0b0f1a;font-weight:600;border:none;padding:9px 14px;border-radius:8px;cursor:pointer;font-size:13px;transition:transform .1s,opacity .15s;white-space:nowrap}
+  button:hover:not(:disabled){transform:translateY(-1px)}
+  button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  button.ghost{background:transparent;color:var(--text-2);border:1px solid var(--border);font-weight:500}
+  button.ghost:hover:not(:disabled){background:var(--bg-3);color:var(--text-1)}
+  button.danger{background:linear-gradient(135deg,#ff5d6c 0%,#d63447 100%);color:#fff}
+  button.warn{background:linear-gradient(135deg,#ffb74c 0%,#ff8a4c 100%);color:#0b0f1a}
 
-  /* Form controls */
-  .row { display: flex; gap: 8px; align-items: center; }
-  .row + .row { margin-top: 8px; }
-  input[type="text"], input[type="number"] {
-    flex: 1;
-    background: var(--bg-3); border: 1px solid var(--border); color: var(--text-1);
-    padding: 9px 11px; border-radius: 8px; font-size: 13px; outline: none;
-    transition: border-color 0.15s;
-  }
-  input[type="text"]:focus, input[type="number"]:focus { border-color: var(--accent); }
-  input::placeholder { color: var(--text-3); }
-  button {
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
-    color: #0b0f1a; font-weight: 600;
-    border: none; padding: 9px 14px; border-radius: 8px; cursor: pointer;
-    font-size: 13px; transition: transform 0.1s, opacity 0.15s;
-    white-space: nowrap;
-  }
-  button:hover:not(:disabled) { transform: translateY(-1px); }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  button.ghost {
-    background: transparent; color: var(--text-2);
-    border: 1px solid var(--border); font-weight: 500;
-  }
-  button.ghost:hover:not(:disabled) { background: var(--bg-3); color: var(--text-1); }
-  button.danger { background: linear-gradient(135deg, #ff5d6c 0%, #d63447 100%); color: #fff; }
+  .help{font-size:11px;color:var(--text-3);margin-top:6px;line-height:1.4}
 
-  .help { font-size: 11px; color: var(--text-3); margin-top: 6px; line-height: 1.4; }
+  /* Zone list */
+  #zoneList{display:flex;flex-direction:column;gap:8px}
+  .zone-card{background:var(--bg-3);border:1px solid var(--border);border-radius:8px;padding:10px;cursor:pointer;transition:border-color .15s}
+  .zone-card:hover{border-color:var(--accent)}
+  .zone-card.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .zone-card.combined{border-style:dashed;border-color:#ffb74c}
+  .zone-card .zhead{display:flex;align-items:center;gap:8px}
+  .zone-card input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;cursor:pointer;flex-shrink:0}
+  .zone-card .swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0;cursor:pointer}
+  .zone-card .zname-wrap{flex:1;min-width:0;display:flex;flex-direction:column}
+  .zone-card .zname{font-weight:700;font-size:13px;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .zone-card .zpins{font-size:11px;color:var(--text-2);font-family:monospace}
+  .zone-card .zactions{display:flex;gap:2px;flex-shrink:0}
+  .zone-card .icon-btn{background:transparent;border:none;padding:4px 6px;cursor:pointer;color:var(--text-3);font-size:13px;border-radius:4px}
+  .zone-card .icon-btn:hover{background:var(--bg-2);color:var(--text-1)}
+  .zone-card .stats{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:11px;color:var(--text-2)}
+  .zone-card .stats span b{color:var(--text-1);font-weight:600}
+  .zone-card .areas-block{margin-top:8px;font-size:11px;color:var(--text-3);line-height:1.5;max-height:0;overflow:hidden;transition:max-height .25s}
+  .zone-card.expanded .areas-block{max-height:400px;overflow-y:auto}
+  .areas-block .pin-group{margin-bottom:6px}
+  .areas-block .pin-group .pin-head{font-size:10px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+  .areas-block .area-tag{display:inline-block;background:var(--bg-2);padding:2px 7px;border-radius:3px;margin:2px;font-size:11px;color:var(--text-2)}
 
-  /* Zone List */
-  #zoneList { display: flex; flex-direction: column; gap: 8px; }
-  .zone-card {
-    background: var(--bg-3); border: 1px solid var(--border); border-radius: 8px;
-    padding: 10px; cursor: pointer; transition: border-color 0.15s;
-  }
-  .zone-card:hover { border-color: var(--accent); }
-  .zone-card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-  .zone-card .zhead { display: flex; align-items: center; gap: 8px; }
-  .zone-card input[type="checkbox"] {
-    accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer;
-  }
-  .zone-card .swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
-  .zone-card .zpin { font-weight: 700; font-size: 14px; color: var(--text-1); }
-  .zone-card .zname { font-size: 12px; color: var(--text-2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .zone-card .zactions { display: flex; gap: 4px; }
-  .zone-card .icon-btn {
-    background: transparent; border: none; padding: 3px 6px; cursor: pointer;
-    color: var(--text-3); font-size: 14px; border-radius: 4px;
-  }
-  .zone-card .icon-btn:hover { background: var(--bg-2); color: var(--text-1); }
-  .zone-card .stats {
-    margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px;
-    font-size: 11px; color: var(--text-2);
-  }
-  .zone-card .stats span b { color: var(--text-1); font-weight: 600; }
-  .zone-card .areas {
-    margin-top: 6px; font-size: 11px; color: var(--text-3); line-height: 1.4;
-    max-height: 48px; overflow: hidden; transition: max-height 0.2s;
-  }
-  .zone-card.expanded .areas { max-height: 400px; overflow-y: auto; }
-  .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
-  .badge.good { background: rgba(46,204,113,0.18); color: #4ee397; }
-  .badge.warn { background: rgba(243,156,18,0.18); color: #ffc05a; }
+  .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600}
+  .badge.good{background:rgba(46,204,113,.18);color:#4ee397}
+  .badge.warn{background:rgba(243,156,18,.18);color:#ffc05a}
 
-  /* Combined panel */
-  .combined-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .stat-tile {
-    background: var(--bg-3); border: 1px solid var(--border); border-radius: 8px;
-    padding: 8px 10px;
-  }
-  .stat-tile .label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; }
-  .stat-tile .value { font-size: 16px; color: var(--text-1); font-weight: 700; margin-top: 2px; }
-  .stat-tile .value small { font-size: 11px; color: var(--text-2); font-weight: 500; }
+  .edit-form{margin-top:8px;padding:8px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px}
+  .edit-form .row{margin-bottom:6px}
+  .edit-form input[type=color]{width:34px;height:32px;padding:0;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer}
+  .edit-form input[type=text]{padding:6px 8px;font-size:12px}
+  .edit-form button{padding:6px 10px;font-size:12px}
 
-  .areas-list {
-    margin-top: 8px; max-height: 140px; overflow-y: auto;
-    background: var(--bg-1); border: 1px solid var(--border); border-radius: 6px;
-    padding: 8px; font-size: 11px; color: var(--text-2); line-height: 1.6;
-  }
-  .areas-list span { display: inline-block; background: var(--bg-3); padding: 2px 7px; border-radius: 3px; margin: 2px; }
+  .combined-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stat-tile{background:var(--bg-3);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+  .stat-tile .label{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px}
+  .stat-tile .value{font-size:16px;color:var(--text-1);font-weight:700;margin-top:2px}
+  .stat-tile .value small{font-size:11px;color:var(--text-2);font-weight:500}
+
+  .empty{text-align:center;padding:18px 8px;color:var(--text-3);font-size:12px}
+
+  /* Map controls (floating, top-right) */
+  .map-controls{position:absolute;top:12px;right:12px;z-index:1000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .ctl-group{background:rgba(19,24,38,.92);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:10px;padding:8px;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+  .ctl-group .title{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;display:flex;align-items:center;gap:6px;font-weight:600}
+  .ctl-row{display:flex;align-items:center;gap:8px;padding:4px 2px;font-size:12px;color:var(--text-1);cursor:pointer;user-select:none}
+  .ctl-row:hover{color:var(--accent)}
+  .ctl-row .swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+  .toggle{position:relative;width:30px;height:16px;background:var(--bg-3);border-radius:999px;transition:background .15s;flex-shrink:0}
+  .toggle::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--text-2);transition:.15s}
+  .ctl-row input{display:none}
+  .ctl-row input:checked+.toggle{background:var(--accent)}
+  .ctl-row input:checked+.toggle::after{left:16px;background:#0b0f1a}
+  .ctl-buttons{display:flex;flex-direction:column;gap:4px}
+  .ctl-btn{display:flex;align-items:center;gap:8px;background:var(--bg-2);border:1px solid var(--border);color:var(--text-1);padding:7px 10px;border-radius:6px;font-size:12px;cursor:pointer;text-align:left;width:100%}
+  .ctl-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .ctl-btn.active{background:var(--accent);color:#0b0f1a;border-color:var(--accent);font-weight:600}
+  .ctl-btn .ico{width:14px;display:inline-block;text-align:center}
+
+  /* Zone label on map */
+  .zone-label{background:transparent!important;border:none!important;box-shadow:none!important;color:#fff;font-weight:700;font-size:12px;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 0 4px rgba(0,0,0,.85);pointer-events:none;text-align:center;white-space:nowrap}
+  .zone-label .pin{color:#4cc9ff;font-family:monospace;font-size:11px}
+
+  .area-marker-label{background:transparent!important;border:none!important;box-shadow:none!important;color:#cfd5e3;font-size:10px;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;pointer-events:none;white-space:nowrap}
+
+  .leaflet-popup-content-wrapper{background:var(--bg-2);color:var(--text-1);border-radius:8px;border:1px solid var(--border)}
+  .leaflet-popup-tip{background:var(--bg-2)}
+  .leaflet-popup-content{margin:10px 12px;font-size:12px;line-height:1.55}
+  .leaflet-popup-content b{color:var(--accent)}
+  .leaflet-popup-content button{margin-top:6px;font-size:11px;padding:5px 10px}
+  .leaflet-control-attribution{background:rgba(19,24,38,.85)!important;color:var(--text-3)!important}
+  .leaflet-control-attribution a{color:var(--accent)!important}
+  .leaflet-draw-toolbar a{background-color:var(--bg-2)!important;border-color:var(--border)!important}
 
   /* Toast */
-  #toast {
-    position: fixed; top: 70px; right: 16px; z-index: 5000;
-    display: flex; flex-direction: column; gap: 8px; pointer-events: none;
-  }
-  .toast {
-    background: var(--bg-2); border: 1px solid var(--border); border-left: 3px solid var(--accent);
-    color: var(--text-1); padding: 10px 14px; border-radius: 6px;
-    font-size: 13px; min-width: 240px; max-width: 360px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
-    animation: slideIn 0.25s ease;
-  }
-  .toast.error { border-left-color: var(--bad); }
-  .toast.success { border-left-color: var(--good); }
-  .toast.warn { border-left-color: var(--warn); }
-  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+  #toast{position:fixed;top:70px;right:16px;z-index:5000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+  .toast{background:var(--bg-2);border:1px solid var(--border);border-left:3px solid var(--accent);color:var(--text-1);padding:10px 14px;border-radius:6px;font-size:13px;min-width:240px;max-width:360px;box-shadow:0 8px 24px rgba(0,0,0,.45);animation:slideIn .25s ease}
+  .toast.error{border-left-color:var(--bad)}
+  .toast.success{border-left-color:var(--good)}
+  .toast.warn{border-left-color:var(--warn)}
+  @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:none;opacity:1}}
 
-  /* Loading overlay */
-  .loading {
-    position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
-    background: var(--bg-2); border: 1px solid var(--border); border-radius: 6px;
-    padding: 8px 14px; font-size: 12px; color: var(--text-1);
-    z-index: 1500; display: none;
-  }
-  .loading.active { display: flex; align-items: center; gap: 8px; }
-  .spinner {
-    width: 12px; height: 12px; border: 2px solid var(--bg-3); border-top-color: var(--accent);
-    border-radius: 50%; animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading{position:absolute;top:70px;left:50%;transform:translateX(-50%);background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-size:12px;color:var(--text-1);z-index:1500;display:none}
+  .loading.active{display:flex;align-items:center;gap:8px}
+  .spinner{width:12px;height:12px;border:2px solid var(--bg-3);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
 
-  /* Zone label on map (white with dark stroke for visibility) */
-  .zone-label {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    color: #ffffff;
-    font-weight: 700;
-    font-size: 12px;
-    text-shadow:
-      -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000,
-      0 0 4px rgba(0,0,0,0.85);
-    pointer-events: none;
-    text-align: center;
-    white-space: nowrap;
-  }
-  .zone-label .pin { color: #4cc9ff; }
+  /* Measurement */
+  .measure-label{background:transparent!important;border:none!important}
+  .measure-tip{background:#ffb74c;color:#0b0f1a;font-weight:700;font-size:11px;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4)}
 
-  /* Click info popup styling override */
-  .leaflet-popup-content-wrapper {
-    background: var(--bg-2); color: var(--text-1); border-radius: 8px;
-    border: 1px solid var(--border);
-  }
-  .leaflet-popup-tip { background: var(--bg-2); }
-  .leaflet-popup-content { margin: 10px 12px; font-size: 12px; line-height: 1.55; }
-  .leaflet-popup-content b { color: var(--accent); }
-
-  /* Leaflet.draw toolbar tweak */
-  .leaflet-draw-toolbar a { background-color: var(--bg-2) !important; border-color: var(--border) !important; }
-  .leaflet-draw-actions a { background-color: var(--bg-2) !important; color: var(--text-1) !important; }
-
-  /* Scale & attribution dark fix */
-  .leaflet-control-attribution { background: rgba(19,24,38,0.85) !important; color: var(--text-3) !important; }
-  .leaflet-control-attribution a { color: var(--accent) !important; }
-
-  /* Empty state */
-  .empty {
-    text-align: center; padding: 18px 8px; color: var(--text-3); font-size: 12px;
-  }
+  /* Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:6000;display:none;align-items:center;justify-content:center}
+  .modal-bg.active{display:flex}
+  .modal{background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px;width:360px;max-width:90vw}
+  .modal h3{margin:0 0 12px 0;font-size:15px;color:var(--text-1)}
+  .modal .help{margin-bottom:10px}
+  .modal .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
 </style>
 </head>
 <body>
@@ -248,66 +168,63 @@
   </header>
 
   <aside class="sidebar">
-    <!-- Add Subzone -->
+    <!-- Add Zone -->
     <div class="section">
-      <h2><span class="dot"></span>Add Subzone by Pincode</h2>
+      <h2><span class="dot"></span>Create Zone</h2>
       <div class="row">
-        <input id="pinInput" type="text" placeholder="e.g. 560032" maxlength="6" />
-        <button id="addZoneBtn">Add</button>
-      </div>
-      <div class="help">
-        Pulls the real boundary from OpenStreetMap (same source many maps use). Enter any Indian pincode.
-        Try: <b>560032</b> (RT Nagar), <b>560094</b> (Sanjaynagar), <b>560043</b> (HBR Layout).
-      </div>
-    </div>
-
-    <!-- Geofence Drawing -->
-    <div class="section">
-      <h2><span class="dot" style="background:var(--accent-2)"></span>Geofence Drawing</h2>
-      <div class="row">
-        <button id="drawPolyBtn" class="ghost">Draw Polygon</button>
-        <button id="drawCircleBtn" class="ghost">Draw Circle</button>
+        <input id="pinInput" type="text" placeholder="Pincode (e.g. 560032)" maxlength="6" style="flex:0 0 130px" />
+        <input id="nameInput" type="text" placeholder="Zone name (optional)" />
       </div>
       <div class="row" style="margin-top:8px">
-        <button id="clearFenceBtn" class="ghost" style="flex:1">Clear Geofences</button>
+        <button id="addZoneBtn" style="width:100%">+ Add Zone</button>
       </div>
-      <div class="help">Draw any shape to define a custom geofence. Stats show area &amp; perimeter.</div>
-      <div id="fenceStats" style="display:none; margin-top:8px"></div>
+      <div class="help">
+        Real boundary fetched from OpenStreetMap. Try: <b>560032</b>, <b>560094</b>, <b>560043</b>, <b>560038</b>.
+      </div>
     </div>
 
-    <!-- Zone List -->
+    <!-- Zone list -->
     <div class="section">
       <h2>
-        <span class="dot" style="background:var(--good)"></span>Subzones
-        <span class="spacer" style="flex:1"></span>
-        <button id="clearAllBtn" class="ghost" style="padding:3px 8px; font-size:11px">Clear all</button>
+        <span class="dot" style="background:var(--good)"></span>Zones
+        <span style="flex:1"></span>
+        <button id="combineBtn" class="ghost" style="padding:4px 10px;font-size:11px" disabled>Combine selected (0)</button>
+        <button id="clearAllBtn" class="ghost" style="padding:4px 8px;font-size:11px;margin-left:4px">Clear</button>
       </h2>
-      <div id="zoneList">
-        <div class="empty">No subzones yet. Add a pincode above.</div>
-      </div>
+      <div id="zoneList"><div class="empty">No zones yet. Create one above.</div></div>
     </div>
 
-    <!-- Combined Stats -->
+    <!-- Combined preview when 2+ checked -->
     <div class="section" id="combinedSection" style="display:none">
-      <h2><span class="dot" style="background:var(--warn)"></span>Combined Selection</h2>
+      <h2><span class="dot" style="background:var(--warn)"></span>Selection Preview</h2>
       <div class="combined-stats">
         <div class="stat-tile"><div class="label">Pincodes</div><div class="value" id="cPin">0</div></div>
         <div class="stat-tile"><div class="label">Areas</div><div class="value" id="cAreas">0</div></div>
         <div class="stat-tile"><div class="label">Total Area</div><div class="value" id="cArea">0 <small>km²</small></div></div>
         <div class="stat-tile"><div class="label">Max Radius</div><div class="value" id="cRad">0 <small>km</small></div></div>
-        <div class="stat-tile" style="grid-column: 1 / -1">
+        <div class="stat-tile" style="grid-column:1/-1">
           <div class="label">Within 10 km of combined center?</div>
           <div class="value"><span id="cWithin" class="badge">—</span></div>
         </div>
       </div>
-      <div class="areas-list" id="cAreaList"><i style="color:var(--text-3)">Areas will appear here</i></div>
+      <div id="cAreaList" style="margin-top:8px;max-height:140px;overflow-y:auto;background:var(--bg-1);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:11px"></div>
     </div>
 
-    <!-- Map click info -->
+    <!-- Measure -->
+    <div class="section" id="measureSection" style="display:none">
+      <h2><span class="dot" style="background:#ffb74c"></span>Measurement</h2>
+      <div id="measureInfo" style="font-size:12px;color:var(--text-2);line-height:1.6"></div>
+      <div class="row" style="margin-top:8px">
+        <button id="measureFinishBtn" class="ghost" style="flex:1">Finish</button>
+        <button id="measureClearBtn" class="ghost" style="flex:1">Clear</button>
+      </div>
+    </div>
+
+    <!-- Click info -->
     <div class="section">
-      <h2><span class="dot" style="background:#ff8a4c"></span>Click on Map for Info</h2>
-      <div id="clickInfo" style="font-size:12px; color:var(--text-2); line-height:1.6">
-        Click anywhere on the map to look up the area name and pincode at that point.
+      <h2><span class="dot" style="background:#ff8a4c"></span>Click Info</h2>
+      <div id="clickInfo" style="font-size:12px;color:var(--text-2);line-height:1.6">
+        Click anywhere on the map to look up the area name and pincode.
       </div>
     </div>
   </aside>
@@ -315,455 +232,790 @@
   <main class="map-wrap">
     <div id="map"></div>
     <div class="loading" id="loading"><div class="spinner"></div><span id="loadingText">Loading…</span></div>
+
+    <!-- Floating map controls (top-right) -->
+    <div class="map-controls">
+      <div class="ctl-group">
+        <div class="title">Layers</div>
+        <label class="ctl-row">
+          <span style="flex:1">Bengaluru outline</span>
+          <input type="checkbox" id="tglBengaluru" checked /><span class="toggle"></span>
+        </label>
+        <label class="ctl-row">
+          <span style="flex:1;font-weight:600">All Zones (5)</span>
+          <input type="checkbox" id="tglAllZones" /><span class="toggle"></span>
+        </label>
+        <div style="margin-left:8px;border-left:1px solid var(--border);padding-left:8px">
+          <label class="ctl-row"><span class="swatch" style="background:var(--zC)"></span><span style="flex:1">Central</span><input type="checkbox" data-zone="C" class="zoneToggle"/><span class="toggle"></span></label>
+          <label class="ctl-row"><span class="swatch" style="background:var(--zN)"></span><span style="flex:1">North</span><input type="checkbox" data-zone="N" class="zoneToggle"/><span class="toggle"></span></label>
+          <label class="ctl-row"><span class="swatch" style="background:var(--zS)"></span><span style="flex:1">South</span><input type="checkbox" data-zone="S" class="zoneToggle"/><span class="toggle"></span></label>
+          <label class="ctl-row"><span class="swatch" style="background:var(--zE)"></span><span style="flex:1">East</span><input type="checkbox" data-zone="E" class="zoneToggle"/><span class="toggle"></span></label>
+          <label class="ctl-row"><span class="swatch" style="background:var(--zW)"></span><span style="flex:1">West</span><input type="checkbox" data-zone="W" class="zoneToggle"/><span class="toggle"></span></label>
+        </div>
+        <label class="ctl-row" style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px">
+          <span style="flex:1">All areas (suburbs)</span>
+          <input type="checkbox" id="tglAllAreas" /><span class="toggle"></span>
+        </label>
+      </div>
+
+      <div class="ctl-group">
+        <div class="title">Tools</div>
+        <div class="ctl-buttons">
+          <button class="ctl-btn" id="toolMeasure"><span class="ico">📏</span>Measure distance</button>
+          <button class="ctl-btn" id="toolDrawPoly"><span class="ico">⬡</span>Draw geofence</button>
+          <button class="ctl-btn" id="toolDrawCircle"><span class="ico">◯</span>Circle geofence</button>
+          <button class="ctl-btn" id="toolClear"><span class="ico">🗑</span>Clear drawings</button>
+        </div>
+      </div>
+    </div>
   </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle">Combine Zones</h3>
+    <div class="help" id="modalHelp"></div>
+    <input type="text" id="modalInput" placeholder="Combined zone name" style="width:100%" />
+    <div class="actions">
+      <button class="ghost" id="modalCancel">Cancel</button>
+      <button id="modalOk">OK</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
 
-<!-- Libraries -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
 
 <script>
 /* =========================================================================
-   Pincode Zone Manager — vanilla JS module
-   - Real boundaries from Nominatim/OpenStreetMap (matches Google's source)
-   - Areas inside a pincode via Overpass API (place=suburb|neighbourhood|...)
-   - Reverse geocode on click
-   - Turf.js for area / perimeter / centroid / max-radius / union
-   - Leaflet.draw for geofencing
+   Pincode Zone Manager — Bengaluru
    ========================================================================= */
 
-const MAP_CENTER = [12.9716, 77.5946]; // Bengaluru
+const MAP_CENTER = [12.9716, 77.5946];
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
-const OVERPASS = 'https://overpass-api.de/api/interpreter';
+const OVERPASS  = 'https://overpass-api.de/api/interpreter';
 const COLORS = ['#4cc9ff','#7c5cff','#ffb74c','#2ee6a3','#ff6b9d','#a78bfa','#34d399','#fb7185','#60a5fa','#fbbf24'];
 
-/* ---------- Map ---------- */
-const map = L.map('map', { zoomControl: true, attributionControl: true })
-  .setView(MAP_CENTER, 12);
+/* Hardcoded approximate Bengaluru BBMP polygon (fallback if Nominatim fails) */
+const BENGALURU_FALLBACK = {
+  type:'Polygon',
+  coordinates:[[
+    [77.460,12.835],[77.500,12.820],[77.560,12.835],[77.620,12.840],[77.680,12.870],
+    [77.730,12.910],[77.760,12.960],[77.785,13.020],[77.780,13.080],[77.745,13.135],
+    [77.690,13.150],[77.620,13.140],[77.560,13.130],[77.510,13.110],[77.470,13.060],
+    [77.450,13.000],[77.445,12.940],[77.450,12.880],[77.460,12.835]
+  ]]
+};
 
-// CartoDB Dark Matter — dark mode tiles
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap &copy; CARTO',
-  subdomains: 'abcd',
-  maxZoom: 19
+/* ---------- Map ---------- */
+const map = L.map('map', { zoomControl:true, attributionControl:true }).setView(MAP_CENTER, 11);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'&copy; OpenStreetMap &copy; CARTO', subdomains:'abcd', maxZoom:19
 }).addTo(map);
 
-// FeatureGroup for drawn geofences
 const drawnItems = new L.FeatureGroup().addTo(map);
-const drawControl = new L.Control.Draw({
-  edit: { featureGroup: drawnItems, remove: true },
-  draw: {
-    polyline: false, marker: false, circlemarker: false, rectangle: false,
-    polygon: { shapeOptions: { color: '#ff8a4c', weight: 2, fillOpacity: 0.18 } },
-    circle:  { shapeOptions: { color: '#ff8a4c', weight: 2, fillOpacity: 0.18 } }
-  }
-});
-// We won't add the on-screen toolbar — use sidebar buttons instead, but the control supplies API.
 
 /* ---------- State ---------- */
-const zones = new Map(); // pincode -> zoneObj
+let bengaluruGeo = null;        // GeoJSON Polygon for the city
+let bengaluruLayer = null;      // L.GeoJSON for outline
+let zones = new Map();          // id -> Zone instance
+let zoneIdSeq = 1;
 let colorIdx = 0;
 const boundaryCache = new Map();
 const areasCache = new Map();
+const cardinalLayers = { C:null, N:null, S:null, E:null, W:null };
+let allAreasLayer = null;
+let allAreasLoaded = false;
 
-/* ---------- UI helpers ---------- */
-const $ = (sel) => document.querySelector(sel);
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const escapeHTML = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtKm = v => (v||0).toFixed(2);
 const toast = (msg, type='info', ms=3500) => {
-  const el = document.createElement('div');
-  el.className = 'toast ' + type;
-  el.textContent = msg;
-  document.getElementById('toast').appendChild(el);
-  setTimeout(() => el.remove(), ms);
+  const el = document.createElement('div'); el.className='toast '+type; el.textContent=msg;
+  $('#toast').appendChild(el); setTimeout(()=>el.remove(), ms);
 };
-const showLoading = (text) => {
-  const l = $('#loading'); $('#loadingText').textContent = text || 'Loading…'; l.classList.add('active');
-};
+const showLoading = t => { $('#loadingText').textContent=t||'Loading…'; $('#loading').classList.add('active'); };
 const hideLoading = () => $('#loading').classList.remove('active');
+
+function modalPrompt({title, help, value=''}) {
+  return new Promise(resolve => {
+    $('#modalTitle').textContent = title;
+    $('#modalHelp').textContent = help || '';
+    $('#modalInput').value = value;
+    $('#modalBg').classList.add('active');
+    $('#modalInput').focus(); $('#modalInput').select();
+    const finish = (val) => {
+      $('#modalBg').classList.remove('active');
+      $('#modalOk').onclick = null; $('#modalCancel').onclick = null;
+      $('#modalInput').onkeydown = null;
+      resolve(val);
+    };
+    $('#modalOk').onclick = () => finish($('#modalInput').value.trim() || null);
+    $('#modalCancel').onclick = () => finish(null);
+    $('#modalInput').onkeydown = e => { if (e.key==='Enter') $('#modalOk').click(); if (e.key==='Escape') $('#modalCancel').click(); };
+  });
+}
 
 /* ---------- API: Nominatim ---------- */
 async function fetchPincodeBoundary(pincode) {
   if (boundaryCache.has(pincode)) return boundaryCache.get(pincode);
   const url = `${NOMINATIM}/search?postalcode=${encodeURIComponent(pincode)}&country=India&polygon_geojson=1&format=json&addressdetails=1&limit=5`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error('Nominatim request failed');
+  if (!res.ok) throw new Error('Nominatim failed');
   const data = await res.json();
-  // Prefer entries that actually have a polygon
-  const withPoly = data.find(d => d.geojson && (d.geojson.type === 'Polygon' || d.geojson.type === 'MultiPolygon'));
+  const withPoly = data.find(d => d.geojson && (d.geojson.type==='Polygon' || d.geojson.type==='MultiPolygon'));
   const chosen = withPoly || data[0] || null;
   boundaryCache.set(pincode, chosen);
   return chosen;
 }
 
+async function fetchBengaluruBoundary() {
+  const url = `${NOMINATIM}/search?q=Bengaluru&format=json&polygon_geojson=1&limit=5`;
+  try {
+    const res = await fetch(url); if (!res.ok) throw 0;
+    const data = await res.json();
+    const r = data.find(d => d.geojson && (d.geojson.type==='Polygon' || d.geojson.type==='MultiPolygon'));
+    if (r) return r.geojson;
+  } catch(e) {}
+  return BENGALURU_FALLBACK;
+}
+
 async function reverseGeocode(lat, lng) {
-  const url = `${NOMINATIM}/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=16`;
-  const res = await fetch(url);
+  const res = await fetch(`${NOMINATIM}/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=16`);
   if (!res.ok) throw new Error('Reverse geocode failed');
   return res.json();
 }
 
-/* ---------- API: Overpass (areas inside polygon) ---------- */
+/* ---------- API: Overpass ---------- */
 function geojsonToOverpassPoly(geom) {
-  // Convert a GeoJSON polygon ring to Overpass "lat lon lat lon ..." string.
-  // For MultiPolygon, use the largest ring.
   let ring;
-  if (geom.type === 'Polygon') ring = geom.coordinates[0];
-  else if (geom.type === 'MultiPolygon') {
-    ring = geom.coordinates.map(p => p[0]).sort((a,b) => b.length - a.length)[0];
-  } else return null;
-  // Limit ring size to keep Overpass query short
-  if (ring.length > 200) {
-    const step = Math.ceil(ring.length / 200);
-    ring = ring.filter((_,i) => i % step === 0);
+  if (geom.type==='Polygon') ring = geom.coordinates[0];
+  else if (geom.type==='MultiPolygon') ring = geom.coordinates.map(p=>p[0]).sort((a,b)=>b.length-a.length)[0];
+  else return null;
+  if (ring.length>200) {
+    const step = Math.ceil(ring.length/200);
+    ring = ring.filter((_,i)=>i%step===0);
   }
-  return ring.map(c => `${c[1]} ${c[0]}`).join(' ');
+  return ring.map(c=>`${c[1]} ${c[0]}`).join(' ');
 }
 
-async function fetchAreasInside(geojson) {
-  const cacheKey = JSON.stringify(geojson).slice(0, 80);
+async function fetchAreasInside(geojson, pincode) {
+  const cacheKey = pincode + '|' + JSON.stringify(geojson).length;
   if (areasCache.has(cacheKey)) return areasCache.get(cacheKey);
   const polyStr = geojsonToOverpassPoly(geojson);
   if (!polyStr) return [];
+  // Two strategies merged: places inside polygon + features tagged with this postcode
   const q = `[out:json][timeout:25];
 (
-  node["place"~"suburb|neighbourhood|locality|quarter|village"](poly:"${polyStr}");
+  node["place"~"suburb|neighbourhood|locality|quarter|village|hamlet"](poly:"${polyStr}");
+  node["addr:postcode"="${pincode}"]["name"];
+  way["addr:postcode"="${pincode}"]["name"]["place"];
 );
-out tags 200;`;
+out tags center 400;`;
   try {
-    const res = await fetch(OVERPASS, { method: 'POST', body: q });
+    const res = await fetch(OVERPASS, {method:'POST', body:q});
     if (!res.ok) return [];
     const data = await res.json();
-    const names = (data.elements || [])
-      .map(e => e.tags && e.tags.name)
-      .filter(Boolean);
+    const names = (data.elements||[]).map(e => e.tags && e.tags.name).filter(Boolean);
     const unique = [...new Set(names)].sort();
     areasCache.set(cacheKey, unique);
     return unique;
-  } catch (e) {
-    console.warn('Overpass failed:', e);
-    return [];
-  }
+  } catch(e) { console.warn('Overpass error', e); return []; }
 }
 
-/* ---------- Stats with Turf ---------- */
+async function fetchAllAreasInBengaluru(geojson) {
+  const polyStr = geojsonToOverpassPoly(geojson);
+  if (!polyStr) return [];
+  const q = `[out:json][timeout:30];
+(
+  node["place"~"suburb|neighbourhood|quarter"](poly:"${polyStr}");
+);
+out tags 1500;`;
+  const res = await fetch(OVERPASS, {method:'POST', body:q});
+  if (!res.ok) throw new Error('Overpass failed');
+  const data = await res.json();
+  return (data.elements||[]).filter(e => e.tags && e.tags.name).map(e => ({
+    lat:e.lat, lng:e.lon, name:e.tags.name, place:e.tags.place, postcode:e.tags['addr:postcode']
+  }));
+}
+
+/* ---------- Stats ---------- */
 function computeZoneStats(geojson) {
-  // geojson is a Polygon or MultiPolygon
   const feat = turf.feature(geojson);
-  const areaKm2 = turf.area(feat) / 1e6;
-  // Perimeter (km) = sum of ring lengths
+  const areaKm2 = turf.area(feat)/1e6;
   let perimeterKm = 0;
-  const rings = (geojson.type === 'Polygon')
-    ? geojson.coordinates
-    : geojson.coordinates.flat();
-  rings.forEach(ring => {
-    const line = turf.lineString(ring);
-    perimeterKm += turf.length(line, { units: 'kilometers' });
-  });
+  const rings = (geojson.type==='Polygon') ? geojson.coordinates : geojson.coordinates.flat();
+  rings.forEach(r => { perimeterKm += turf.length(turf.lineString(r), {units:'kilometers'}); });
   const centroid = turf.centroid(feat);
-  // Max radius = max distance from centroid to any vertex
   let maxRadiusKm = 0;
-  rings.forEach(ring => {
-    ring.forEach(([lng, lat]) => {
-      const d = turf.distance(centroid, turf.point([lng, lat]), { units: 'kilometers' });
-      if (d > maxRadiusKm) maxRadiusKm = d;
-    });
-  });
-  return {
-    areaKm2,
-    perimeterKm,
-    centroid: centroid.geometry.coordinates, // [lng, lat]
-    maxRadiusKm
-  };
+  rings.forEach(r => r.forEach(([lng,lat]) => {
+    const d = turf.distance(centroid, turf.point([lng,lat]), {units:'kilometers'});
+    if (d>maxRadiusKm) maxRadiusKm=d;
+  }));
+  return { areaKm2, perimeterKm, centroid: centroid.geometry.coordinates, maxRadiusKm };
 }
 
-function computeCombinedStats(zoneArr) {
-  if (!zoneArr.length) return null;
-  // Union all geometries
-  let union = turf.feature(zoneArr[0].geojson);
-  for (let i = 1; i < zoneArr.length; i++) {
-    try {
-      const next = turf.feature(zoneArr[i].geojson);
-      union = turf.union(union, next) || union;
-    } catch(e) { /* ignore union errors */ }
+/* ---------- Zone class ---------- */
+class Zone {
+  constructor({name, components, color}) {
+    this.id = 'z_' + (zoneIdSeq++);
+    this.name = name;
+    this.components = components; // [{pincode, geojson, areas, name}]
+    this.color = color || COLORS[colorIdx++ % COLORS.length];
+    this.selected = false;
+    this.expanded = false;
+    this.editing = false;
+    this.layer = null;
+    this.label = null;
+    this.recompute();
   }
-  const stats = computeZoneStats(union.geometry);
-  // All unique areas
-  const allAreas = new Set();
-  zoneArr.forEach(z => (z.areas || []).forEach(a => allAreas.add(a)));
-  return {
-    pincodes: zoneArr.length,
-    areas: [...allAreas].sort(),
-    ...stats,
-    union
-  };
+  get pincodes() { return this.components.map(c => c.pincode); }
+  get isCombined() { return this.components.length > 1; }
+  get allAreas() {
+    const s = new Set();
+    this.components.forEach(c => (c.areas||[]).forEach(a => s.add(a)));
+    return [...s].sort();
+  }
+  recompute() {
+    let union = turf.feature(this.components[0].geojson);
+    for (let i=1; i<this.components.length; i++) {
+      try { union = turf.union(union, turf.feature(this.components[i].geojson)) || union; } catch(e) {}
+    }
+    this.geojson = union.geometry;
+    this.stats = computeZoneStats(this.geojson);
+  }
+  draw() {
+    if (this.layer) map.removeLayer(this.layer);
+    if (this.label) map.removeLayer(this.label);
+    this.layer = L.geoJSON(this.geojson, {
+      style:{ color:this.color, weight: this.isCombined?3:2, fillOpacity:0.18, fillColor:this.color, dashArray: this.isCombined?'6 4':null }
+    }).addTo(map);
+    const pinDisplay = this.pincodes.length>2 ? `${this.pincodes.length} pincodes` : this.pincodes.join(' + ');
+    this.label = L.marker([this.stats.centroid[1], this.stats.centroid[0]], {
+      icon: L.divIcon({
+        className:'zone-label',
+        html: `<div><span class="pin">${escapeHTML(pinDisplay)}</span><br/>${escapeHTML(this.name)}</div>`,
+        iconSize:[140,32], iconAnchor:[70,16]
+      }),
+      interactive:false
+    }).addTo(map);
+  }
+  remove() {
+    if (this.layer) map.removeLayer(this.layer);
+    if (this.label) map.removeLayer(this.label);
+  }
 }
 
 /* ---------- Zone management ---------- */
-async function addZone(pincode) {
-  pincode = String(pincode).trim();
-  if (!/^\d{6}$/.test(pincode)) { toast('Enter a valid 6-digit pincode', 'error'); return; }
-  if (zones.has(pincode)) { toast('Pincode already added', 'warn'); return; }
-
-  showLoading(`Fetching boundary for ${pincode}…`);
-  let result;
-  try { result = await fetchPincodeBoundary(pincode); }
-  catch(e) { hideLoading(); toast('Failed to fetch boundary: ' + e.message, 'error'); return; }
-
-  if (!result) { hideLoading(); toast(`No data found for pincode ${pincode}`, 'error'); return; }
-  if (!result.geojson || (result.geojson.type !== 'Polygon' && result.geojson.type !== 'MultiPolygon')) {
-    hideLoading();
-    toast(`No polygon boundary available for ${pincode} in OpenStreetMap`, 'warn', 5000);
-    return;
+async function loadComponentForPincode(pincode) {
+  const result = await fetchPincodeBoundary(pincode);
+  if (!result || !result.geojson || (result.geojson.type!=='Polygon' && result.geojson.type!=='MultiPolygon')) {
+    throw new Error(`No polygon boundary for ${pincode}`);
   }
-
-  const stats = computeZoneStats(result.geojson);
-  // Try to derive a friendly name from the address
   const addr = result.address || {};
-  const friendlyName = addr.suburb || addr.neighbourhood || addr.city_district || addr.county || addr.state_district || addr.city || result.display_name?.split(',')[0] || pincode;
-
-  showLoading(`Looking up areas inside ${pincode}…`);
-  const areas = await fetchAreasInside(result.geojson);
-
-  const color = COLORS[colorIdx++ % COLORS.length];
-  const layer = L.geoJSON(result.geojson, {
-    style: { color, weight: 2, fillOpacity: 0.18, fillColor: color }
-  }).addTo(map);
-
-  // Label at centroid (white text, dark stroke — never black-on-dark)
-  const label = L.marker([stats.centroid[1], stats.centroid[0]], {
-    icon: L.divIcon({
-      className: 'zone-label',
-      html: `<div><span class="pin">${pincode}</span><br/>${escapeHTML(friendlyName)}</div>`,
-      iconSize: [120, 30], iconAnchor: [60, 15]
-    }),
-    interactive: false
-  }).addTo(map);
-
-  const zone = {
-    pincode, name: friendlyName, geojson: result.geojson, areas, stats, color, layer, label,
-    selected: false, expanded: false
-  };
-  zones.set(pincode, zone);
-  renderZoneList();
-  updateHeader();
-  recomputeCombined();
-
-  // Fit map
-  map.fitBounds(layer.getBounds(), { padding: [40, 40], maxZoom: 14 });
-  hideLoading();
-  toast(`Added ${pincode} — ${friendlyName}${areas.length ? ` (${areas.length} areas)` : ''}`, 'success');
+  const friendly = addr.suburb || addr.neighbourhood || addr.city_district || addr.county || addr.state_district || addr.city || (result.display_name||'').split(',')[0] || pincode;
+  const areas = await fetchAreasInside(result.geojson, pincode);
+  return { pincode, geojson: result.geojson, areas, name: friendly };
 }
 
-function removeZone(pincode) {
-  const z = zones.get(pincode);
-  if (!z) return;
-  map.removeLayer(z.layer);
-  map.removeLayer(z.label);
-  zones.delete(pincode);
-  renderZoneList();
-  updateHeader();
-  recomputeCombined();
+async function addZone(pincode, customName=null) {
+  pincode = String(pincode).trim();
+  if (!/^\d{6}$/.test(pincode)) { toast('Enter a valid 6-digit pincode', 'error'); return; }
+  for (const z of zones.values()) {
+    if (z.pincodes.includes(pincode) && !z.isCombined) { toast(`Pincode ${pincode} already added`, 'warn'); return; }
+  }
+  showLoading(`Fetching boundary for ${pincode}…`);
+  let comp;
+  try { comp = await loadComponentForPincode(pincode); }
+  catch(e) { hideLoading(); toast(e.message, 'error'); return; }
+  const zone = new Zone({ name: customName || comp.name || pincode, components:[comp] });
+  zones.set(zone.id, zone);
+  zone.draw();
+  hideLoading();
+  renderZoneList(); updateHeader(); recomputeCombined();
+  map.fitBounds(zone.layer.getBounds(), { padding:[40,40], maxZoom:14 });
+  toast(`Added ${zone.name} (${pincode}) — ${comp.areas.length} areas`, 'success');
+}
+
+async function combineSelected() {
+  const sel = [...zones.values()].filter(z => z.selected);
+  if (sel.length < 2) { toast('Select at least 2 zones to combine', 'warn'); return; }
+  const defaultName = sel.map(z => z.name).join(' + ');
+  const name = await modalPrompt({ title:'Combine Zones', help:'Combining '+sel.length+' zones / '+sel.flatMap(z=>z.pincodes).length+' pincodes', value: defaultName });
+  if (!name) return;
+  // Flatten components, dedup by pincode
+  const seen = new Set();
+  const components = [];
+  sel.forEach(z => z.components.forEach(c => { if (!seen.has(c.pincode)) { seen.add(c.pincode); components.push(c); } }));
+  const zone = new Zone({ name, components });
+  zones.set(zone.id, zone);
+  zone.draw();
+  // Deselect originals
+  sel.forEach(z => z.selected = false);
+  renderZoneList(); updateHeader(); recomputeCombined();
+  map.fitBounds(zone.layer.getBounds(), { padding:[40,40] });
+  toast(`Combined zone "${name}" created`, 'success');
+}
+
+function removeZone(id) {
+  const z = zones.get(id); if (!z) return;
+  z.remove(); zones.delete(id);
+  renderZoneList(); updateHeader(); recomputeCombined();
 }
 
 function clearAllZones() {
-  for (const pin of [...zones.keys()]) removeZone(pin);
+  for (const id of [...zones.keys()]) removeZone(id);
 }
 
-function toggleSelect(pincode) {
-  const z = zones.get(pincode);
-  if (!z) return;
+function toggleSelect(id) {
+  const z = zones.get(id); if (!z) return;
   z.selected = !z.selected;
-  renderZoneList();
-  updateHeader();
-  recomputeCombined();
+  renderZoneList(); updateHeader(); recomputeCombined();
 }
 
-function toggleExpand(pincode) {
-  const z = zones.get(pincode);
-  if (!z) return;
-  z.expanded = !z.expanded;
+function toggleExpand(id) {
+  const z = zones.get(id); if (!z) return;
+  z.expanded = !z.expanded; renderZoneList();
+}
+
+function startEdit(id) {
+  zones.forEach(z => z.editing = false);
+  const z = zones.get(id); if (!z) return;
+  z.editing = true; renderZoneList();
+}
+
+function saveEdit(id, newName, newColor) {
+  const z = zones.get(id); if (!z) return;
+  z.name = newName.trim() || z.name;
+  z.color = newColor || z.color;
+  z.editing = false;
+  z.draw();
   renderZoneList();
+  toast('Zone updated', 'success', 1500);
 }
 
 /* ---------- Rendering ---------- */
-function escapeHTML(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-function fmtKm(v) { return v.toFixed(2); }
-
 function renderZoneList() {
   const list = $('#zoneList');
-  if (zones.size === 0) {
-    list.innerHTML = '<div class="empty">No subzones yet. Add a pincode above.</div>';
-    return;
-  }
+  if (zones.size===0) { list.innerHTML = '<div class="empty">No zones yet. Create one above.</div>'; return; }
   list.innerHTML = '';
   for (const z of zones.values()) {
     const within = z.stats.maxRadiusKm <= 10;
     const card = document.createElement('div');
-    card.className = 'zone-card' + (z.selected ? ' selected' : '') + (z.expanded ? ' expanded' : '');
+    card.className = 'zone-card' + (z.selected?' selected':'') + (z.expanded?' expanded':'') + (z.isCombined?' combined':'');
+    const pinsLine = z.pincodes.length>3 ? `${z.pincodes.length} pincodes` : z.pincodes.join(' • ');
     card.innerHTML = `
       <div class="zhead">
-        <input type="checkbox" ${z.selected ? 'checked' : ''} data-pin="${z.pincode}" />
+        <input type="checkbox" ${z.selected?'checked':''} title="Select to combine" />
         <span class="swatch" style="background:${z.color}"></span>
-        <span class="zpin">${z.pincode}</span>
-        <span class="zname" title="${escapeHTML(z.name)}">${escapeHTML(z.name)}</span>
+        <span class="zname-wrap">
+          <span class="zname">${escapeHTML(z.name)}${z.isCombined?' <span class="badge warn" style="font-size:9px">COMBINED</span>':''}</span>
+          <span class="zpins">${escapeHTML(pinsLine)}</span>
+        </span>
         <span class="zactions">
-          <button class="icon-btn" data-action="zoom" title="Zoom to">⌖</button>
-          <button class="icon-btn" data-action="expand" title="Toggle areas">${z.expanded ? '▾' : '▸'}</button>
-          <button class="icon-btn" data-action="delete" title="Remove">✕</button>
+          <button class="icon-btn" data-action="zoom" title="Zoom">⌖</button>
+          <button class="icon-btn" data-action="edit" title="Edit">✎</button>
+          <button class="icon-btn" data-action="expand" title="Areas">${z.expanded?'▾':'▸'}</button>
+          <button class="icon-btn" data-action="delete" title="Delete">✕</button>
         </span>
       </div>
+      ${z.editing ? `
+        <div class="edit-form">
+          <div class="row">
+            <input type="color" value="${z.color}" id="ec_${z.id}" />
+            <input type="text" value="${escapeHTML(z.name)}" id="en_${z.id}" placeholder="Zone name" />
+          </div>
+          <div class="row">
+            <button data-action="save">Save</button>
+            <button class="ghost" data-action="cancelEdit">Cancel</button>
+          </div>
+        </div>
+      ` : ''}
       <div class="stats">
+        <span>Pincodes: <b>${z.pincodes.length}</b></span>
+        <span>Areas: <b>${z.allAreas.length}</b></span>
         <span>Area: <b>${fmtKm(z.stats.areaKm2)} km²</b></span>
         <span>Perimeter: <b>${fmtKm(z.stats.perimeterKm)} km</b></span>
         <span>Center→edge: <b>${fmtKm(z.stats.maxRadiusKm)} km</b></span>
-        <span>Areas: <b>${z.areas.length}</b></span>
-        <span style="grid-column:1/-1; margin-top:2px">
-          <span class="badge ${within ? 'good' : 'warn'}">${within ? 'Within 10 km ✓' : 'Exceeds 10 km'}</span>
-        </span>
+        <span><span class="badge ${within?'good':'warn'}">${within?'Within 10 km ✓':'Exceeds 10 km'}</span></span>
       </div>
-      <div class="areas">
-        ${z.areas.length
-          ? z.areas.map(a => `<span style="display:inline-block;background:var(--bg-2);padding:2px 7px;border-radius:3px;margin:2px;font-size:11px;color:var(--text-2)">${escapeHTML(a)}</span>`).join('')
-          : '<i>No mapped sub-areas found inside this pincode.</i>'}
+      <div class="areas-block">
+        ${z.components.map(c => `
+          <div class="pin-group">
+            <div class="pin-head">${escapeHTML(c.pincode)} — ${escapeHTML(c.name||'')}</div>
+            <div>${ (c.areas||[]).length
+              ? c.areas.map(a => `<span class="area-tag">${escapeHTML(a)}</span>`).join('')
+              : '<i style="color:var(--text-3)">No mapped sub-areas found.</i>' }</div>
+          </div>
+        `).join('')}
       </div>
     `;
-    // Wire events
-    card.querySelector('input[type=checkbox]').addEventListener('change', e => { e.stopPropagation(); toggleSelect(z.pincode); });
-    card.querySelectorAll('.icon-btn').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        const a = btn.dataset.action;
-        if (a === 'zoom') map.fitBounds(z.layer.getBounds(), { padding: [40, 40], maxZoom: 14 });
-        if (a === 'expand') toggleExpand(z.pincode);
-        if (a === 'delete') removeZone(z.pincode);
+    // Wire up events
+    card.querySelector('input[type=checkbox]').addEventListener('change', e => { e.stopPropagation(); toggleSelect(z.id); });
+    card.querySelectorAll('.icon-btn').forEach(b => b.addEventListener('click', e => {
+      e.stopPropagation();
+      const a = b.dataset.action;
+      if (a==='zoom') map.fitBounds(z.layer.getBounds(),{padding:[40,40],maxZoom:14});
+      if (a==='expand') toggleExpand(z.id);
+      if (a==='delete') removeZone(z.id);
+      if (a==='edit') startEdit(z.id);
+    }));
+    if (z.editing) {
+      card.querySelector('[data-action=save]').addEventListener('click', () => {
+        saveEdit(z.id, $('#en_'+z.id).value, $('#ec_'+z.id).value);
       });
-    });
+      card.querySelector('[data-action=cancelEdit]').addEventListener('click', () => {
+        z.editing=false; renderZoneList();
+      });
+    }
     list.appendChild(card);
   }
 }
 
 function updateHeader() {
   $('#hdrZones').textContent = zones.size;
-  $('#hdrSelected').textContent = [...zones.values()].filter(z => z.selected).length;
+  const sel = [...zones.values()].filter(z => z.selected).length;
+  $('#hdrSelected').textContent = sel;
+  const btn = $('#combineBtn');
+  btn.textContent = `Combine selected (${sel})`;
+  btn.disabled = sel < 2;
 }
 
-let combinedLayer = null;
+let combinedPreviewLayer = null;
+let combinedPreviewMarker = null;
 function recomputeCombined() {
   const sel = [...zones.values()].filter(z => z.selected);
   const sec = $('#combinedSection');
-  if (combinedLayer) { map.removeLayer(combinedLayer); combinedLayer = null; }
-  if (sel.length < 1) { sec.style.display = 'none'; return; }
-  sec.style.display = '';
-  const stats = computeCombinedStats(sel);
-  $('#cPin').textContent = stats.pincodes;
-  $('#cAreas').textContent = stats.areas.length;
+  if (combinedPreviewLayer) { map.removeLayer(combinedPreviewLayer); combinedPreviewLayer=null; }
+  if (combinedPreviewMarker) { map.removeLayer(combinedPreviewMarker); combinedPreviewMarker=null; }
+  if (sel.length < 2) { sec.style.display='none'; return; }
+  sec.style.display='';
+  // Union all selected geometries
+  let union = turf.feature(sel[0].geojson);
+  for (let i=1; i<sel.length; i++) { try { union = turf.union(union, turf.feature(sel[i].geojson)) || union; } catch(e){} }
+  const stats = computeZoneStats(union.geometry);
+  const allPin = [...new Set(sel.flatMap(z => z.pincodes))];
+  const allAreas = [...new Set(sel.flatMap(z => z.allAreas))].sort();
+  $('#cPin').textContent = allPin.length;
+  $('#cAreas').textContent = allAreas.length;
   $('#cArea').innerHTML = `${fmtKm(stats.areaKm2)} <small>km²</small>`;
   $('#cRad').innerHTML = `${fmtKm(stats.maxRadiusKm)} <small>km</small>`;
   const within = stats.maxRadiusKm <= 10;
-  const wb = $('#cWithin'); wb.textContent = within ? 'Yes — within 10 km ✓' : `No — extends ${fmtKm(stats.maxRadiusKm)} km`;
-  wb.className = 'badge ' + (within ? 'good' : 'warn');
-  $('#cAreaList').innerHTML = stats.areas.length
-    ? stats.areas.map(a => `<span>${escapeHTML(a)}</span>`).join('')
-    : '<i style="color:var(--text-3)">No mapped sub-areas found.</i>';
+  const wb = $('#cWithin');
+  wb.textContent = within ? `Yes — within 10 km ✓` : `No — extends ${fmtKm(stats.maxRadiusKm)} km`;
+  wb.className = 'badge '+(within?'good':'warn');
+  $('#cAreaList').innerHTML = allAreas.length
+    ? allAreas.map(a => `<span class="area-tag">${escapeHTML(a)}</span>`).join('')
+    : '<i style="color:var(--text-3)">No areas found in selected zones.</i>';
+  combinedPreviewLayer = L.geoJSON(union, { style:{ color:'#ffb74c', weight:3, dashArray:'6 4', fill:false } }).addTo(map);
+  combinedPreviewMarker = L.circleMarker([stats.centroid[1], stats.centroid[0]], {
+    radius:7, color:'#ffb74c', weight:2, fillColor:'#ffb74c', fillOpacity:1
+  }).bindTooltip('Combined center', {permanent:false}).addTo(map);
+}
 
-  // Draw the union outline
-  if (sel.length >= 1) {
-    combinedLayer = L.geoJSON(stats.union, {
-      style: { color: '#ffb74c', weight: 3, dashArray: '6 4', fill: false }
-    }).addTo(map);
-    // Combined center marker
-    L.circleMarker([stats.centroid[1], stats.centroid[0]], {
-      radius: 6, color: '#ffb74c', weight: 2, fillColor: '#ffb74c', fillOpacity: 1
-    }).bindTooltip('Combined center', { permanent: false }).addTo(combinedLayer);
+/* ---------- Cardinal Zones (Central / N / S / E / W) ---------- */
+function sectorPolygon(centerCoord, radiusKm, startBearing, endBearing, steps=64) {
+  const center = turf.point(centerCoord);
+  const coords = [center.geometry.coordinates];
+  let s = startBearing, e = endBearing;
+  if (e <= s) e += 360;
+  for (let i=0; i<=steps; i++) {
+    const a = s + (e-s)*i/steps;
+    coords.push(turf.destination(center, radiusKm, a > 180 ? a - 360 : a, {units:'kilometers'}).geometry.coordinates);
+  }
+  coords.push(center.geometry.coordinates);
+  return turf.polygon([coords]);
+}
+
+function buildCardinalZones() {
+  const cityFeat = turf.feature(bengaluruGeo);
+  const centerPt = turf.centroid(cityFeat);
+  const center = centerPt.geometry.coordinates;
+  // far enough to cover entire city: max distance from centroid to any boundary point
+  const rings = bengaluruGeo.type==='Polygon'?bengaluruGeo.coordinates:bengaluruGeo.coordinates.flat();
+  let maxR = 0;
+  rings.forEach(r => r.forEach(([lng,lat]) => {
+    const d = turf.distance(centerPt, turf.point([lng,lat]), {units:'kilometers'});
+    if (d>maxR) maxR=d;
+  }));
+  const farR = maxR + 5;
+  // Central: small circle around centroid
+  const central = turf.circle(center, Math.min(4, maxR*0.35), {units:'kilometers', steps:64});
+  // Sectors (bearings: N=0, E=90, S=180, W=270)
+  const sectors = {
+    N: sectorPolygon(center, farR, -45, 45),
+    E: sectorPolygon(center, farR, 45, 135),
+    S: sectorPolygon(center, farR, 135, 225),
+    W: sectorPolygon(center, farR, 225, 315),
+  };
+  // Clip with Bengaluru, subtract central
+  const out = {};
+  try { out.C = turf.intersect(central, cityFeat) || central; } catch(e){ out.C = central; }
+  for (const k of ['N','E','S','W']) {
+    let z = sectors[k];
+    try { z = turf.intersect(z, cityFeat) || z; } catch(e){}
+    try { z = turf.difference(z, out.C) || z; } catch(e){}
+    out[k] = z;
+  }
+  return out;
+}
+
+let cardinalZonesGeo = null;
+function showCardinalZone(key, on) {
+  if (!cardinalZonesGeo) cardinalZonesGeo = buildCardinalZones();
+  if (on) {
+    if (cardinalLayers[key]) return;
+    const colors = { C:getCSS('--zC'), N:getCSS('--zN'), S:getCSS('--zS'), E:getCSS('--zE'), W:getCSS('--zW') };
+    const labels = { C:'Central', N:'North', S:'South', E:'East', W:'West' };
+    const f = cardinalZonesGeo[key];
+    const lyr = L.geoJSON(f, { style:{ color:colors[key], weight:2, fillOpacity:0.12, fillColor:colors[key] } }).addTo(map);
+    // Label at centroid
+    try {
+      const c = turf.centroid(f).geometry.coordinates;
+      const lbl = L.marker([c[1],c[0]], {
+        icon:L.divIcon({className:'zone-label', html:`<div style="font-size:13px">${labels[key]}<br/><span class="pin" style="color:${colors[key]}">${labels[key].toUpperCase()} ZONE</span></div>`, iconSize:[120,30], iconAnchor:[60,15]}),
+        interactive:false
+      }).addTo(map);
+      lyr._label = lbl;
+    } catch(e) {}
+    cardinalLayers[key] = lyr;
+  } else {
+    if (!cardinalLayers[key]) return;
+    if (cardinalLayers[key]._label) map.removeLayer(cardinalLayers[key]._label);
+    map.removeLayer(cardinalLayers[key]);
+    cardinalLayers[key] = null;
   }
 }
+function getCSS(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+/* ---------- All Areas overlay ---------- */
+async function showAllAreas(on) {
+  if (!on) { if (allAreasLayer) { map.removeLayer(allAreasLayer); allAreasLayer=null; } return; }
+  if (allAreasLayer) return;
+  showLoading('Loading suburbs across Bengaluru…');
+  try {
+    const items = await fetchAllAreasInBengaluru(bengaluruGeo);
+    allAreasLoaded = true;
+    allAreasLayer = L.layerGroup();
+    items.forEach(it => {
+      const m = L.circleMarker([it.lat, it.lng], {
+        radius: it.place==='suburb'?4:3, color:'#4cc9ff', weight:1, fillColor:'#4cc9ff', fillOpacity:.85
+      });
+      m.bindTooltip(it.name, { className:'area-marker-label', direction:'top', offset:[0,-4] });
+      m.on('click', async () => {
+        let pin = it.postcode;
+        if (!pin) {
+          try { const r = await reverseGeocode(it.lat, it.lng); pin = r.address?.postcode || '—'; } catch(e){ pin='—'; }
+        }
+        L.popup().setLatLng([it.lat,it.lng]).setContent(`
+          <b>${escapeHTML(it.name)}</b><br/>
+          Pincode: <b>${escapeHTML(pin)}</b><br/>
+          ${pin!=='—' ? `<button onclick="window.__addZoneFromPopup('${pin}')">+ Add ${escapeHTML(pin)} as zone</button>` : ''}
+        `).openOn(map);
+      });
+      allAreasLayer.addLayer(m);
+    });
+    allAreasLayer.addTo(map);
+    toast(`Loaded ${items.length} areas`, 'success');
+  } catch(e) {
+    toast('Failed to load areas: '+e.message, 'error');
+    document.getElementById('tglAllAreas').checked = false;
+  } finally { hideLoading(); }
+}
+window.__addZoneFromPopup = (p) => addZone(p);
 
 /* ---------- Map click → reverse geocode ---------- */
 map.on('click', async (ev) => {
+  if (measureTool.active) return;
+  if (drawingActive) return;
   const { lat, lng } = ev.latlng;
+  L.popup().setLatLng(ev.latlng).setContent('<i>Looking up…</i>').openOn(map);
   $('#clickInfo').innerHTML = `<i style="color:var(--text-3)">Looking up ${lat.toFixed(4)}, ${lng.toFixed(4)}…</i>`;
-  L.popup({ className: 'click-popup' })
-    .setLatLng(ev.latlng)
-    .setContent('<i>Looking up…</i>')
-    .openOn(map);
   try {
     const data = await reverseGeocode(lat, lng);
     const a = data.address || {};
     const area = a.suburb || a.neighbourhood || a.quarter || a.village || a.town || a.city_district || a.locality || '—';
     const pin = a.postcode || '—';
     const city = a.city || a.town || a.state_district || '';
-    const html = `
+    map.openPopup(`
       <b>Area:</b> ${escapeHTML(area)}<br/>
       <b>Pincode:</b> ${escapeHTML(pin)}<br/>
       ${city ? `<b>City:</b> ${escapeHTML(city)}<br/>` : ''}
-      <span style="color:var(--text-3);font-size:11px">${escapeHTML(data.display_name || '')}</span>
-    `;
-    map.openPopup(html, ev.latlng);
+      <span style="color:var(--text-3);font-size:11px">${escapeHTML(data.display_name||'')}</span><br/>
+      ${pin!=='—' ? `<button onclick="window.__addZoneFromPopup('${pin}')">+ Add ${escapeHTML(pin)} as zone</button>` : ''}
+    `, ev.latlng);
     $('#clickInfo').innerHTML = `
       <div><b style="color:var(--accent)">${escapeHTML(area)}</b></div>
       <div>Pincode: <b>${escapeHTML(pin)}</b></div>
-      ${city ? `<div>City: ${escapeHTML(city)}</div>` : ''}
-      <button class="ghost" id="addFromClick" style="margin-top:8px;width:100%;font-size:11px;padding:6px 10px"
-        ${pin === '—' ? 'disabled' : ''}>+ Add ${escapeHTML(pin)} as subzone</button>
+      ${city?`<div>City: ${escapeHTML(city)}</div>`:''}
     `;
-    const btn = document.getElementById('addFromClick');
-    if (btn && pin !== '—') btn.addEventListener('click', () => addZone(pin));
-  } catch (e) {
-    map.openPopup('<i>Lookup failed</i>', ev.latlng);
-  }
+  } catch(e) { map.openPopup('<i>Lookup failed</i>', ev.latlng); }
 });
 
 /* ---------- Geofence drawing ---------- */
 let drawer = null;
-$('#drawPolyBtn').addEventListener('click', () => {
+let drawingActive = false;
+function setActiveTool(btnId) {
+  ['toolMeasure','toolDrawPoly','toolDrawCircle'].forEach(id => $('#'+id).classList.toggle('active', id===btnId));
+}
+function clearActiveTool() { setActiveTool(null); }
+
+function startDraw(kind) {
   if (drawer) drawer.disable();
-  drawer = new L.Draw.Polygon(map, drawControl.options.draw.polygon);
+  drawingActive = true;
+  measureTool.stop();
+  const opt = { shapeOptions:{ color:'#ff8a4c', weight:2, fillOpacity:0.15 } };
+  drawer = (kind==='polygon') ? new L.Draw.Polygon(map, opt) : new L.Draw.Circle(map, opt);
   drawer.enable();
-});
-$('#drawCircleBtn').addEventListener('click', () => {
-  if (drawer) drawer.disable();
-  drawer = new L.Draw.Circle(map, drawControl.options.draw.circle);
-  drawer.enable();
-});
-$('#clearFenceBtn').addEventListener('click', () => {
-  drawnItems.clearLayers();
-  $('#fenceStats').style.display = 'none';
-});
+  setActiveTool(kind==='polygon'?'toolDrawPoly':'toolDrawCircle');
+}
 
 map.on(L.Draw.Event.CREATED, (e) => {
   const layer = e.layer;
   drawnItems.addLayer(layer);
   let stats;
-  if (e.layerType === 'circle') {
-    const r = layer.getRadius() / 1000;
-    stats = { areaKm2: Math.PI * r * r, perimeterKm: 2 * Math.PI * r, maxRadiusKm: r };
+  if (e.layerType==='circle') {
+    const r = layer.getRadius()/1000;
+    stats = { areaKm2: Math.PI*r*r, perimeterKm: 2*Math.PI*r, maxRadiusKm: r };
   } else {
     const gj = layer.toGeoJSON();
     stats = computeZoneStats(gj.geometry);
   }
-  const within = stats.maxRadiusKm <= 10;
-  $('#fenceStats').style.display = '';
-  $('#fenceStats').innerHTML = `
-    <div class="combined-stats">
-      <div class="stat-tile"><div class="label">Area</div><div class="value">${fmtKm(stats.areaKm2)} <small>km²</small></div></div>
-      <div class="stat-tile"><div class="label">Perimeter</div><div class="value">${fmtKm(stats.perimeterKm || 0)} <small>km</small></div></div>
-      <div class="stat-tile" style="grid-column:1/-1"><div class="label">Max radius</div>
-        <div class="value">${fmtKm(stats.maxRadiusKm)} <small>km</small>
-          <span class="badge ${within ? 'good' : 'warn'}" style="margin-left:8px">${within ? 'Within 10 km ✓' : 'Exceeds 10 km'}</span>
-        </div></div>
-    </div>`;
+  const within = stats.maxRadiusKm<=10;
+  layer.bindPopup(`
+    <b>Geofence</b><br/>
+    Area: <b>${fmtKm(stats.areaKm2)} km²</b><br/>
+    Perimeter: <b>${fmtKm(stats.perimeterKm||0)} km</b><br/>
+    Max radius: <b>${fmtKm(stats.maxRadiusKm)} km</b> <span class="badge ${within?'good':'warn'}">${within?'≤ 10 km':'> 10 km'}</span>
+  `).openPopup();
+  drawingActive = false; clearActiveTool();
 });
+map.on(L.Draw.Event.DRAWSTOP, () => { drawingActive=false; clearActiveTool(); });
+
+/* ---------- Measure Tool ---------- */
+const measureTool = {
+  active:false, points:[], markers:[], lines:[], labels:[], totalLabel:null,
+  start() {
+    if (drawingActive) { drawer && drawer.disable(); drawingActive=false; }
+    this.active = true;
+    map.getContainer().style.cursor='crosshair';
+    map.doubleClickZoom.disable();
+    map.on('click', this._onClick = ev => this.addPoint(ev.latlng));
+    map.on('dblclick', this._onDbl = () => this.stop());
+    $('#measureSection').style.display='';
+    $('#measureInfo').innerHTML='Click points on the map to measure. Double-click or press <b>Finish</b> to end.';
+    setActiveTool('toolMeasure');
+  },
+  addPoint(latlng) {
+    this.points.push(latlng);
+    const m = L.circleMarker(latlng, {radius:4, color:'#ffb74c', weight:2, fillColor:'#0b0f1a', fillOpacity:1}).addTo(map);
+    this.markers.push(m);
+    if (this.points.length>=2) {
+      const a = this.points[this.points.length-2];
+      const seg = a.distanceTo(latlng)/1000;
+      const line = L.polyline([a, latlng], {color:'#ffb74c', weight:3, dashArray:'4 4'}).addTo(map);
+      this.lines.push(line);
+      const mid = L.latLng((a.lat+latlng.lat)/2, (a.lng+latlng.lng)/2);
+      const lbl = L.marker(mid, { icon:L.divIcon({className:'measure-label', html:`<div class="measure-tip">${seg.toFixed(2)} km</div>`, iconSize:[60,18], iconAnchor:[30,9]}), interactive:false}).addTo(map);
+      this.labels.push(lbl);
+    }
+    this.updateTotal();
+  },
+  total() {
+    let t=0;
+    for (let i=1;i<this.points.length;i++) t += this.points[i-1].distanceTo(this.points[i])/1000;
+    return t;
+  },
+  updateTotal() {
+    const t = this.total();
+    $('#measureInfo').innerHTML = `
+      <div>Points: <b>${this.points.length}</b></div>
+      <div>Total distance: <b style="color:var(--accent)">${t.toFixed(2)} km</b></div>
+      ${this.points.length<2?'<div style="color:var(--text-3);margin-top:4px">Click another point to start measuring.</div>':''}
+    `;
+  },
+  stop() {
+    if (!this.active) return;
+    this.active=false;
+    map.getContainer().style.cursor='';
+    map.off('click', this._onClick); map.off('dblclick', this._onDbl);
+    setTimeout(()=>map.doubleClickZoom.enable(),100);
+    clearActiveTool();
+    if (this.points.length===0) $('#measureSection').style.display='none';
+  },
+  clear() {
+    this.markers.forEach(m=>map.removeLayer(m)); this.lines.forEach(l=>map.removeLayer(l)); this.labels.forEach(l=>map.removeLayer(l));
+    this.markers=[]; this.lines=[]; this.labels=[]; this.points=[];
+    $('#measureInfo').innerHTML=''; $('#measureSection').style.display='none';
+    this.stop();
+  }
+};
 
 /* ---------- Wiring ---------- */
-$('#addZoneBtn').addEventListener('click', () => addZone($('#pinInput').value));
-$('#pinInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addZone(e.target.value); });
+$('#addZoneBtn').addEventListener('click', () => {
+  const p = $('#pinInput').value, n = $('#nameInput').value.trim() || null;
+  addZone(p, n);
+  $('#pinInput').value=''; $('#nameInput').value='';
+});
+$('#pinInput').addEventListener('keydown', e => { if (e.key==='Enter') $('#addZoneBtn').click(); });
+$('#nameInput').addEventListener('keydown', e => { if (e.key==='Enter') $('#addZoneBtn').click(); });
 $('#clearAllBtn').addEventListener('click', clearAllZones);
+$('#combineBtn').addEventListener('click', combineSelected);
 
-/* ---------- Initial sample ---------- */
-toast('Tip: try pincode 560032, 560094, 560043, 560038', 'info', 5500);
+$('#tglBengaluru').addEventListener('change', e => {
+  if (e.target.checked) bengaluruLayer && bengaluruLayer.addTo(map);
+  else bengaluruLayer && map.removeLayer(bengaluruLayer);
+});
+
+$('#tglAllZones').addEventListener('change', e => {
+  const on = e.target.checked;
+  ['C','N','S','E','W'].forEach(k => {
+    const cb = document.querySelector(`.zoneToggle[data-zone="${k}"]`);
+    cb.checked = on; showCardinalZone(k, on);
+  });
+});
+$$('.zoneToggle').forEach(cb => cb.addEventListener('change', e => {
+  showCardinalZone(e.target.dataset.zone, e.target.checked);
+  // master toggle reflects state
+  const allOn = $$('.zoneToggle').every(c => c.checked);
+  $('#tglAllZones').checked = allOn;
+}));
+
+$('#tglAllAreas').addEventListener('change', e => showAllAreas(e.target.checked));
+
+$('#toolMeasure').addEventListener('click', () => {
+  if (measureTool.active) { measureTool.stop(); }
+  else measureTool.start();
+});
+$('#toolDrawPoly').addEventListener('click', () => startDraw('polygon'));
+$('#toolDrawCircle').addEventListener('click', () => startDraw('circle'));
+$('#toolClear').addEventListener('click', () => {
+  drawnItems.clearLayers();
+  measureTool.clear();
+  toast('Drawings cleared', 'info', 1500);
+});
+
+$('#measureFinishBtn').addEventListener('click', () => measureTool.stop());
+$('#measureClearBtn').addEventListener('click', () => measureTool.clear());
+
+/* ---------- Init ---------- */
+(async () => {
+  showLoading('Loading Bengaluru boundary…');
+  bengaluruGeo = await fetchBengaluruBoundary();
+  bengaluruLayer = L.geoJSON(bengaluruGeo, {
+    style:{ color:'#4cc9ff', weight:2, fillOpacity:0.04, fillColor:'#4cc9ff', dashArray:'2 4' },
+    interactive:false
+  }).addTo(map);
+  map.fitBounds(bengaluruLayer.getBounds(), { padding:[20,20] });
+  hideLoading();
+  toast('Tip: try pincode 560032 (RT Nagar), 560094 (Sanjaynagar), or click anywhere on the map.', 'info', 6000);
+})();
 </script>
 </body>
 </html>
