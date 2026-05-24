@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pincode Zone Manager — Bengaluru</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+
+<style>
+  :root {
+    --bg-0:#0b0f1a; --bg-1:#131826; --bg-2:#1a2030; --bg-3:#232a3d;
+    --border:#2a3148;
+    --text-1:#e6ecf5; --text-2:#9aa3b8; --text-3:#6b7388;
+    --accent:#4cc9ff; --accent-2:#7c5cff;
+    --good:#2ecc71; --warn:#f39c12; --bad:#ff5d6c;
+    --zN:#60a5fa; --zS:#fb7185; --zE:#34d399; --zW:#fbbf24; --zC:#a78bfa;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-0);color:var(--text-1);overflow:hidden}
+
+  .app{display:grid;grid-template-columns:380px 1fr;grid-template-rows:56px 1fr;height:100vh}
+  header.top{grid-column:1/-1;background:linear-gradient(90deg,#0e1422 0%,#131826 100%);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:14px;z-index:1000}
+  header .logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent-2) 100%);display:grid;place-items:center;font-weight:700;color:#0b0f1a}
+  header h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.2px}
+  header .sub{font-size:12px;color:var(--text-3);margin-left:4px}
+  header .spacer{flex:1}
+  header .pill{background:var(--bg-2);border:1px solid var(--border);color:var(--text-2);font-size:12px;padding:6px 10px;border-radius:999px}
+  header .pill b{color:var(--text-1)}
+
+  aside.sidebar{background:var(--bg-1);border-right:1px solid var(--border);overflow-y:auto;padding:14px}
+  aside.sidebar::-webkit-scrollbar{width:8px}
+  aside.sidebar::-webkit-scrollbar-thumb{background:var(--bg-3);border-radius:4px}
+
+  main.map-wrap{position:relative}
+  #map{position:absolute;inset:0;background:#0b0f1a}
+
+  .section{background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px}
+  .section h2{margin:0 0 10px 0;font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.8px;display:flex;align-items:center;gap:8px}
+  .section h2 .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+
+  .row{display:flex;gap:8px;align-items:center}
+  .row+.row{margin-top:8px}
+  input[type=text],input[type=number]{flex:1;background:var(--bg-3);border:1px solid var(--border);color:var(--text-1);padding:9px 11px;border-radius:8px;font-size:13px;outline:none;transition:border-color .15s;min-width:0}
+  input[type=text]:focus,input[type=number]:focus{border-color:var(--accent)}
+  input::placeholder{color:var(--text-3)}
+  button{background:linear-gradient(135deg,var(--accent) 0%,var(--accent-2) 100%);color:#0b0f1a;font-weight:600;border:none;padding:9px 14px;border-radius:8px;cursor:pointer;font-size:13px;transition:transform .1s,opacity .15s;white-space:nowrap}
+  button:hover:not(:disabled){transform:translateY(-1px)}
+  button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  button.ghost{background:transparent;color:var(--text-2);border:1px solid var(--border);font-weight:500}
+  button.ghost:hover:not(:disabled){background:var(--bg-3);color:var(--text-1)}
+  button.danger{background:linear-gradient(135deg,#ff5d6c 0%,#d63447 100%);color:#fff}
+  button.warn{background:linear-gradient(135deg,#ffb74c 0%,#ff8a4c 100%);color:#0b0f1a}
+
+  .help{font-size:11px;color:var(--text-3);margin-top:6px;line-height:1.4}
+
+  /* Zone list */
+  #zoneList{display:flex;flex-direction:column;gap:8px}
+  .zone-card{background:var(--bg-3);border:1px solid var(--border);border-radius:8px;padding:10px;cursor:pointer;transition:border-color .15s}
+  .zone-card:hover{border-color:var(--accent)}
+  .zone-card.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .zone-card.combined{border-style:dashed;border-color:#ffb74c}
+  .zone-card .zhead{display:flex;align-items:center;gap:8px}
+  .zone-card input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;cursor:pointer;flex-shrink:0}
+  .zone-card .swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0;cursor:pointer}
+  .zone-card .zname-wrap{flex:1;min-width:0;display:flex;flex-direction:column}
+  .zone-card .zname{font-weight:700;font-size:13px;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .zone-card .zpins{font-size:11px;color:var(--text-2);font-family:monospace}
+  .zone-card .zactions{display:flex;gap:2px;flex-shrink:0}
+  .zone-card .icon-btn{background:transparent;border:none;padding:4px 6px;cursor:pointer;color:var(--text-3);font-size:13px;border-radius:4px}
+  .zone-card .icon-btn:hover{background:var(--bg-2);color:var(--text-1)}
+  .zone-card .stats{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:11px;color:var(--text-2)}
+  .zone-card .stats span b{color:var(--text-1);font-weight:600}
+  .zone-card .areas-block{margin-top:8px;font-size:11px;color:var(--text-3);line-height:1.5;max-height:0;overflow:hidden;transition:max-height .25s}
+  .zone-card.expanded .areas-block{max-height:400px;overflow-y:auto}
+  .areas-block .pin-group{margin-bottom:6px}
+  .areas-block .pin-group .pin-head{font-size:10px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+  .areas-block .area-tag{display:inline-block;background:var(--bg-2);padding:2px 7px;border-radius:3px;margin:2px;font-size:11px;color:var(--text-2)}
+
+  .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600}
+  .badge.good{background:rgba(46,204,113,.18);color:#4ee397}
+  .badge.warn{background:rgba(243,156,18,.18);color:#ffc05a}
+
+  .edit-form{margin-top:8px;padding:8px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px}
+  .edit-form .row{margin-bottom:6px}
+  .edit-form input[type=color]{width:34px;height:32px;padding:0;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer}
+  .edit-form input[type=text]{padding:6px 8px;font-size:12px}
+  .edit-form button{padding:6px 10px;font-size:12px}
+
+  .combined-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stat-tile{background:var(--bg-3);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+  .stat-tile .label{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px}
+  .stat-tile .value{font-size:16px;color:var(--text-1);font-weight:700;margin-top:2px}
+  .stat-tile .value small{font-size:11px;color:var(--text-2);font-weight:500}
+
+  .empty{text-align:center;padding:18px 8px;color:var(--text-3);font-size:12px}
+
+  /* Map controls (floating, top-right) */
+  .map-controls{position:absolute;top:12px;right:12px;z-index:1000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .ctl-group{background:rgba(19,24,38,.92);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:10px;padding:8px;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+  .ctl-group .title{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;display:flex;align-items:center;gap:6px;font-weight:600}
+  .ctl-row{display:flex;align-items:center;gap:8px;padding:4px 2px;font-size:12px;color:var(--text-1);cursor:pointer;user-select:none}
+  .ctl-row:hover{color:var(--accent)}
+  .ctl-row .swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+  .toggle{position:relative;width:30px;height:16px;background:var(--bg-3);border-radius:999px;transition:background .15s;flex-shrink:0}
+  .toggle::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--text-2);transition:.15s}
+  .ctl-row input{display:none}
+  .ctl-row input:checked+.toggle{background:var(--accent)}
+  .ctl-row input:checked+.toggle::after{left:16px;background:#0b0f1a}
+  .ctl-buttons{display:flex;flex-direction:column;gap:4px}
+  .ctl-btn{display:flex;align-items:center;gap:8px;background:var(--bg-2);border:1px solid var(--border);color:var(--text-1);padding:7px 10px;border-radius:6px;font-size:12px;cursor:pointer;text-align:left;width:100%}
+  .ctl-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .ctl-btn.active{background:var(--accent);color:#0b0f1a;border-color:var(--accent);font-weight:600}
+  .ctl-btn .ico{width:14px;display:inline-block;text-align:center}
+
+  /* Zone label on map */
+  .zone-label{background:transparent!important;border:none!important;box-shadow:none!important;color:#fff;font-weight:700;font-size:12px;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 0 4px rgba(0,0,0,.85);pointer-events:none;text-align:center;white-space:nowrap}
+  .zone-label .pin{color:#4cc9ff;font-family:monospace;font-size:11px}
+
+  .area-marker-label{background:transparent!important;border:none!important;box-shadow:none!important;color:#cfd5e3;font-size:10px;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;pointer-events:none;white-space:nowrap}
+
+  .leaflet-popup-content-wrapper{background:var(--bg-2);color:var(--text-1);border-radius:8px;border:1px solid var(--border)}
+  .leaflet-popup-tip{background:var(--bg-2)}
+  .leaflet-popup-content{margin:10px 12px;font-size:12px;line-height:1.55}
+  .leaflet-popup-content b{color:var(--accent)}
+  .leaflet-popup-content button{margin-top:6px;font-size:11px;padding:5px 10px}
+  .leaflet-control-attribution{background:rgba(19,24,38,.85)!important;color:var(--text-3)!important}
+  .leaflet-control-attribution a{color:var(--accent)!important}
+  .leaflet-draw-toolbar a{background-color:var(--bg-2)!important;border-color:var(--border)!important}
+
+  /* Toast */
+  #toast{position:fixed;top:70px;right:16px;z-index:5000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+  .toast{background:var(--bg-2);border:1px solid var(--border);border-left:3px solid var(--accent);color:var(--text-1);padding:10px 14px;border-radius:6px;font-size:13px;min-width:240px;max-width:360px;box-shadow:0 8px 24px rgba(0,0,0,.45);animation:slideIn .25s ease}
+  .toast.error{border-left-color:var(--bad)}
+  .toast.success{border-left-color:var(--good)}
+  .toast.warn{border-left-color:var(--warn)}
+  @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:none;opacity:1}}
+
+  .loading{position:absolute;top:70px;left:50%;transform:translateX(-50%);background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:8px 14px;font-size:12px;color:var(--text-1);z-index:1500;display:none}
+  .loading.active{display:flex;align-items:center;gap:8px}
+  .spinner{width:12px;height:12px;border:2px solid var(--bg-3);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Measurement */
+  .measure-label{background:transparent!important;border:none!important}
+  .measure-tip{background:#ffb74c;color:#0b0f1a;font-weight:700;font-size:11px;padding:2px 6px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+  .measure-point{background:transparent!important;border:none!important;box-shadow:none!important}
+  .measure-point > div{width:12px;height:12px;border-radius:50%;background:#ffb74c;border:2px solid #0b0f1a;box-shadow:0 0 0 2px #ffb74c,0 0 6px rgba(255,183,76,.6);cursor:move;transition:transform .1s}
+  .measure-point:hover > div{transform:scale(1.25)}
+  .leaflet-marker-draggable.measure-point{cursor:move}
+
+  /* Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:6000;display:none;align-items:center;justify-content:center}
+  .modal-bg.active{display:flex}
+  .modal{background:var(--bg-1);border:1px solid var(--border);border-radius:12px;padding:18px;width:360px;max-width:90vw}
+  .modal h3{margin:0 0 12px 0;font-size:15px;color:var(--text-1)}
+  .modal .help{margin-bottom:10px}
+  .modal .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="logo">PZ</div>
+    <h1>Pincode Zone Manager</h1>
+    <span class="sub">Bengaluru / India</span>
+    <div class="spacer"></div>
+    <div class="pill">Zones: <b id="hdrZones">0</b></div>
+    <div class="pill">Selected: <b id="hdrSelected">0</b></div>
+  </header>
+
+  <aside class="sidebar">
+    <!-- Add Zone -->
+    <div class="section">
+      <h2><span class="dot"></span>Create Zone</h2>
+      <div class="row">
+        <input id="pinInput" type="text" placeholder="Pincode (e.g. 560032)" maxlength="6" style="flex:0 0 130px" />
+        <input id="nameInput" type="text" placeholder="Zone name (optional)" />
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="addZoneBtn" style="width:100%">+ Add Zone</button>
+      </div>
+      <div class="help">
+        Real boundary fetched from OpenStreetMap. Try: <b>560032</b>, <b>560094</b>, <b>560043</b>, <b>560038</b>.
+      </div>
+    </div>
+
+    <!-- Zone list -->
+    <div class="section">
+      <h2>
+        <span class="dot" style="background:var(--good)"></span>Zones
+        <span style="flex:1"></span>
+        <button id="clearAllBtn" class="ghost" style="padding:4px 8px;font-size:11px">Clear all</button>
+      </h2>
+      <button type="button" id="combineBtn" style="display:none;width:100%;margin-bottom:10px;background:linear-gradient(135deg,var(--warn) 0%,#ff8a4c 100%);color:#0b0f1a;padding:10px 14px;font-size:13px">⤓ Combine 0 selected zones</button>
+      <div id="zoneList"><div class="empty">No zones yet. Create one above.</div></div>
+    </div>
+
+    <!-- Combined preview when 2+ checked -->
+    <div class="section" id="combinedSection" style="display:none">
+      <h2><span class="dot" style="background:var(--warn)"></span>Selection Preview</h2>
+      <div class="combined-stats">
+        <div class="stat-tile"><div class="label">Pincodes</div><div class="value" id="cPin">0</div></div>
+        <div class="stat-tile"><div class="label">Areas</div><div class="value" id="cAreas">0</div></div>
+        <div class="stat-tile"><div class="label">Total Area</div><div class="value" id="cArea">0 <small>km²</small></div></div>
+        <div class="stat-tile"><div class="label">Max Radius</div><div class="value" id="cRad">0 <small>km</small></div></div>
+        <div class="stat-tile" style="grid-column:1/-1">
+          <div class="label">Within 10 km of combined center?</div>
+          <div class="value"><span id="cWithin" class="badge">—</span></div>
+        </div>
+      </div>
+      <div id="cAreaList" style="margin-top:8px;max-height:140px;overflow-y:auto;background:var(--bg-1);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:11px"></div>
+    </div>
+
+    <!-- Measure -->
+    <div class="section" id="measureSection" style="display:none">
+      <h2><span class="dot" style="background:#ffb74c"></span>Measurement</h2>
+      <div id="measureInfo" style="font-size:12px;color:var(--text-2);line-height:1.6"></div>
+      <div class="row" style="margin-top:8px">
+        <button id="measureFinishBtn" class="ghost" style="flex:1">Finish</button>
+        <button id="measureClearBtn" class="ghost" style="flex:1">Clear</button>
+      </div>
+    </div>
+
+    <!-- Click info -->
+    <div class="section">
+      <h2><span class="dot" style="background:#ff8a4c"></span>Click Info</h2>
+      <div id="clickInfo" style="font-size:12px;color:var(--text-2);line-height:1.6">
+        Click anywhere on the map to look up the area name and pincode.
+      </div>
+    </div>
+  </aside>
+
+  <main class="map-wrap">
+    <div id="map"></div>
+    <div class="loading" id="loading"><div class="spinner"></div><span id="loadingText">Loading…</span></div>
+
+    <!-- Floating map controls (top-right) -->
+    <div class="map-controls">
+      <div class="ctl-group">
+        <div class="title">Layers</div>
+        <label class="ctl-row">
+          <span style="flex:1">Bengaluru outline</span>
+          <input type="checkbox" id="tglBengaluru" checked /><span class="toggle"></span>
+        </label>
+        <label class="ctl-row">
+          <span style="flex:1;font-weight:600">All Zones (5)</span>
+          <input type="checkbox" id="tglAllZones" /><span class="toggle"></span>
+        </label>
+        <div style="margin-left:8px;border-left:1px solid var(--border);padding-left:8px">
+          <label class="ctl-row"><span class="swatch" style="background:var(--zC)"></span><span style="flex:1">Central</span><input type="checkbox" data-zone="C" class="zoneToggle"/><span class="toggle"></span></label>
+          <label class="ctl-row"><span class="swatch" style="background:var(--zN)"></span><span style="flex:1">North</span><input type="checkbox" data-zone="N" class="zoneToggle"/><span class="toggle"></span></label>
+          <label class="ctl-row"><span class="swatch" style="background:var(--zS)"></span><span style="flex:1">South</span><input type="checkbox" data-zone="S" class="zoneToggle"/><span class="toggle"></span></label>
+          <label class="ctl-row"><span class="swatch" style="background:var(--zE)"></span><span style="flex:1">East</span><input type="checkbox" data-zone="E" class="zoneToggle"/><span class="toggle"></span></label>
+          <label class="ctl-row"><span class="swatch" style="background:var(--zW)"></span><span style="flex:1">West</span><input type="checkbox" data-zone="W" class="zoneToggle"/><span class="toggle"></span></label>
+        </div>
+        <label class="ctl-row" style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px">
+          <span style="flex:1">All areas (suburbs)</span>
+          <input type="checkbox" id="tglAllAreas" /><span class="toggle"></span>
+        </label>
+      </div>
+
+      <div class="ctl-group">
+        <div class="title">Tools</div>
+        <div class="ctl-buttons">
+          <button class="ctl-btn" id="toolMeasure"><span class="ico">📏</span>Measure distance</button>
+          <button class="ctl-btn" id="toolDrawPoly"><span class="ico">⬡</span>Draw geofence</button>
+          <button class="ctl-btn" id="toolDrawCircle"><span class="ico">◯</span>Circle geofence</button>
+          <button class="ctl-btn" id="toolClear"><span class="ico">🗑</span>Clear drawings</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle">Combine Zones</h3>
+    <div class="help" id="modalHelp"></div>
+    <input type="text" id="modalInput" placeholder="Combined zone name" style="width:100%" />
+    <div class="actions">
+      <button class="ghost" id="modalCancel">Cancel</button>
+      <button id="modalOk">OK</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+
+<script>
+/* =========================================================================
+   Pincode Zone Manager — Bengaluru
+   ========================================================================= */
+
+const MAP_CENTER = [12.9716, 77.5946];
+const NOMINATIM = 'https://nominatim.openstreetmap.org';
+const OVERPASS  = 'https://overpass-api.de/api/interpreter';
+const COLORS = [
+  '#4cc9ff','#7c5cff','#ffb74c','#2ee6a3','#ff6b9d','#a78bfa',
+  '#34d399','#fb7185','#60a5fa','#fbbf24','#f97316','#10b981',
+  '#06b6d4','#8b5cf6','#ec4899','#84cc16','#eab308','#f43f5e',
+  '#22d3ee','#a855f7','#14b8a6','#f59e0b','#d946ef','#0ea5e9',
+  '#3b82f6','#ef4444','#65a30d','#0d9488','#9333ea','#db2777'
+];
+
+/* Bengaluru pincode -> main area + sub-areas directory */
+const PINCODE_AREAS = {
+  '560001': { main:'MG Road / Bangalore GPO',       sub:['MG Road','Brigade Road','Vidhana Soudha','Cubbon Road','Commercial Street'] },
+  '560002': { main:'Chickpet',                      sub:['Avenue Road','KR Market','OTC Road','Nagarathpete'] },
+  '560003': { main:'Malleswaram',                   sub:['8th Cross','Sampige Road','Margosa Road'] },
+  '560004': { main:'Basavanagudi',                  sub:['Gandhi Bazaar','Bull Temple Road','NR Colony'] },
+  '560005': { main:'Fraser Town',                   sub:['Cox Town','Pulikeshinagar','Wheeler Road'] },
+  '560006': { main:'High Grounds',                  sub:['Race Course Road','Palace Road','Cunningham Road'] },
+  '560007': { main:'Vasanth Nagar',                 sub:['Jayamahal','Cantonment Area'] },
+  '560008': { main:'HAL Area',                      sub:['HAL Airport Road','Jeevan Bhima Nagar'] },
+  '560009': { main:'City Market',                   sub:['KR Market surroundings','Cottonpet'] },
+  '560010': { main:'Rajajinagar',                   sub:['Rajajinagar Blocks','Industrial Town'] },
+  '560011': { main:'Jayanagar',                     sub:['Jayanagar 1st-9th Blocks'] },
+  '560012': { main:'IISc / Yeshwanthpur',           sub:['Mathikere','Tata Institute Area'] },
+  '560013': { main:'Jalahalli',                     sub:['BEL Area','Gangamma Circle'] },
+  '560014': { main:'Jalahalli West',                sub:['HMT Area','Peenya surroundings'] },
+  '560015': { main:'Vijayanagar Factory Area',      sub:['Binny Mills','Magadi Road belt'] },
+  '560016': { main:'Dooravani Nagar',               sub:['Ramamurthy Nagar','KR Puram side'] },
+  '560017': { main:'Domlur',                        sub:['Old Airport Road','Kodihalli'] },
+  '560018': { main:'Chamarajpet',                   sub:['1st-5th Main areas','Vinayaka Circle'] },
+  '560019': { main:'Banashankari',                  sub:['Hanumanthanagar','Srinagar'] },
+  '560020': { main:'Seshadripuram',                 sub:['Kumara Park West','Palace Guttahalli'] },
+  '560021': { main:'Okalipuram',                    sub:['Anand Rao Circle surroundings'] },
+  '560022': { main:'Yeshwanthpur',                  sub:['Goraguntepalya','Tumkur Road'] },
+  '560023': { main:'Magadi Road',                   sub:['Kamakshipalya','RPC Layout'] },
+  '560024': { main:'Hebbal',                        sub:['RT Nagar','Ganganagar','Hebbal Kempapura'] },
+  '560025': { main:'Richmond Town',                 sub:['Residency Road','Langford Town'] },
+  '560026': { main:'Govindarajanagar',              sub:['Vijayanagar extension areas'] },
+  '560027': { main:'Wilson Garden',                 sub:['Shanti Nagar','Lalbagh Road'] },
+  '560028': { main:'Basaveshwaranagar',             sub:['West of Chord Road areas'] },
+  '560029': { main:'Dharmaram College',             sub:['Dairy Circle','Adugodi'] },
+  '560030': { main:'Ashok Nagar',                   sub:['Richmond Circle','Lavelle Road'] },
+  '560032': { main:'RMV Extension',                 sub:['Sanjay Nagar','Bhoopasandra'] },
+  '560033': { main:'Maruthi Sevanagar',             sub:['Cooke Town extension'] },
+  '560034': { main:'Koramangala',                   sub:['Koramangala 1st-8th Blocks'] },
+  '560035': { main:'Carmelaram',                    sub:['Bellandur outskirts','Sarjapur Road stretch'] },
+  '560036': { main:'KR Puram',                      sub:['A Narayanapura','Battarahalli'] },
+  '560037': { main:'Marathahalli',                  sub:['Brookefield','Kundalahalli'] },
+  '560038': { main:'Indiranagar',                   sub:['HAL 2nd Stage','CMH Road'] },
+  '560039': { main:'Nayandahalli',                  sub:['Mysore Road belt'] },
+  '560040': { main:'Vijayanagar',                   sub:['Attiguppe','Hampinagar'] },
+  '560041': { main:'Jayanagar South',               sub:['JP Nagar Phase 1 surroundings'] },
+  '560042': { main:'Ulsoor',                        sub:['Murphy Town','Cambridge Layout'] },
+  '560043': { main:'Banaswadi',                     sub:['HRBR Layout','Kalyan Nagar'] },
+  '560045': { main:'Nagavara',                      sub:['Manyata Tech Park','Arabic College'] },
+  '560046': { main:'Benson Town',                   sub:['Cleveland Town','Pottery Town'] },
+  '560047': { main:'Ejipura',                       sub:['Neelasandra','Viveknagar'] },
+  '560048': { main:'Mahadevapura',                  sub:['Hoodi','Garudachar Palya'] },
+  '560049': { main:'Bhattarahalli',                 sub:['KR Puram east belt'] },
+  '560050': { main:'Banashankari Temple Area',      sub:['Hosakerehalli','Srinivasanagar'] },
+  '560051': { main:'Shivajinagar',                  sub:['Infantry Road','Tasker Town'] },
+  '560052': { main:'Vyalikaval',                    sub:['Palace Guttahalli extension'] },
+  '560053': { main:'Chickpet Extension',            sub:['Balepet','Cottonpet'] },
+  '560054': { main:'Mathikere',                     sub:['MSR Nagar','BEL Road'] },
+  '560055': { main:'Malleswaram West',              sub:['Mahalakshmi Layout nearby'] },
+  '560056': { main:'Kengeri',                       sub:['Kengeri Satellite Town'] },
+  '560057': { main:'Peenya',                        sub:['Peenya Industrial Area'] },
+  '560058': { main:'Peenya Industrial Estate',      sub:['Tumkur Road industrial belt'] },
+  '560059': { main:'RV Niketan',                    sub:['Banashankari Stage 3'] },
+  '560060': { main:'Rajarajeshwari Nagar',          sub:['BEML Layout','Ideal Homes'] },
+  '560061': { main:'Subramanyapura',                sub:['Uttarahalli Road areas'] },
+  '560062': { main:'Konanakunte',                   sub:['Anjanapura','ISRO Layout'] },
+  '560063': { main:'Yelahanka New Town',            sub:['Attur Layout','CRPF Campus'] },
+  '560064': { main:'Yelahanka',                     sub:['Allalasandra','Puttenahalli'] },
+  '560065': { main:'Bagalur',                       sub:['Aerospace Park surroundings'] },
+  '560066': { main:'Whitefield',                    sub:['ITPL','Kadugodi','Hope Farm'] },
+  '560067': { main:'Whitefield Railway Station',    sub:['Kadugodi extension'] },
+  '560068': { main:'Bommanahalli',                  sub:['Hongasandra','Begur Road'] },
+  '560069': { main:'Jayanagar East',                sub:['South End Circle'] },
+  '560070': { main:'Banashankari Stage I',          sub:['Kathriguppe'] },
+  '560071': { main:'Domlur / HAL',                  sub:['Domlur Layout','Embassy Golf Links'] },
+  '560072': { main:'Nagarbhavi',                    sub:['Moodalapalya','Naagarabhaavi Circle'] },
+  '560073': { main:'Nagasandra',                    sub:['Madanayakanahalli'] },
+  '560074': { main:'Bannerghatta Road',             sub:['Hulimavu','Gottigere'] },
+  '560075': { main:'New Thippasandra',              sub:['CV Raman Nagar nearby'] },
+  '560076': { main:'BTM Layout',                    sub:['Stage 1 & 2','Madiwala'] },
+  '560077': { main:'Kothanur',                      sub:['Hennur Road belt'] },
+  '560078': { main:'JP Nagar',                      sub:['JP Nagar Phases 1-8'] },
+  '560079': { main:'Basaveshwaranagar West',        sub:['Kurubarahalli'] },
+  '560080': { main:'Sadashivanagar',                sub:['Armane Nagar'] },
+  '560081': { main:'Electronics City Phase 1',      sub:['Tech parks and residential layouts'] },
+  '560082': { main:'JP Nagar South',                sub:['Arekere surroundings'] },
+  '560083': { main:'Bannerghatta',                  sub:['Jigani Road belt'] },
+  '560084': { main:'St Thomas Town',                sub:['Lingarajapuram','HBR Layout nearby'] },
+  '560085': { main:'Banashankari Stage II',         sub:['Girinagar'] },
+  '560086': { main:'Mahalakshmi Layout',            sub:['Nandini Layout'] },
+  '560087': { main:'Varthur',                       sub:['Gunjur','Balagere'] },
+  '560088': { main:'Hesaraghatta',                  sub:['Hessarghatta Lake surroundings'] },
+  '560089': { main:'Kengeri Upanagara',             sub:['Dubasipalya'] },
+  '560090': { main:'Chikkabidarakallu',             sub:['Jalahalli Cross surroundings'] },
+  '560091': { main:'Vidyaranyapura',                sub:['AMS Layout','BEL surroundings'] },
+  '560092': { main:'Sahakar Nagar',                 sub:['Kodigehalli'] },
+  '560093': { main:'CV Raman Nagar',                sub:['DRDO Township'] },
+  '560094': { main:'RMV 2nd Stage',                 sub:['Dollars Colony'] },
+  '560095': { main:'Koramangala Industrial Layout', sub:['Sony World Junction surroundings'] },
+  '560096': { main:'Nagarbhavi 2nd Stage',          sub:['Ullal Main Road'] },
+  '560097': { main:'Vidyaranyapura North',          sub:['MS Palya'] },
+  '560098': { main:'Rajarajeshwari Nagar West',     sub:['BHEL Layout'] },
+  '560099': { main:'Electronics City',              sub:['Hebbagodi','Bommasandra'] },
+  '560100': { main:'Electronic City',               sub:['Phase 1 & Phase 2'] },
+  '560102': { main:'HSR Layout',                    sub:['Sector 1-7'] },
+  '560103': { main:'Bellandur',                     sub:['ORR Tech Corridor'] },
+  '560104': { main:'Bommasandra Industrial Area',   sub:['Jigani Industrial belt'] },
+  '560105': { main:'Jigani',                        sub:['APC Circle','industrial layouts'] },
+  '560106': { main:'Anekal',                        sub:['Chandapura nearby'] },
+  '560107': { main:'Attibele',                      sub:['Karnataka-Tamil Nadu border area'] },
+  '560108': { main:'Nelamangala outskirts',         sub:['Industrial outskirts'] },
+  '560109': { main:'Bidadi Road belt',              sub:['Mysore Road outskirts'] },
+  '560110': { main:'Devanahalli outskirts',         sub:['Airport peripheral zones'] },
+  '560111': { main:'Hoskote outskirts',             sub:['Rural east Bengaluru belt'] },
+  '560112': { main:'Kanakapura Road outskirts',     sub:['Kaggalipura belt'] },
+  '560113': { main:'Sarjapur outskirts',            sub:['Rural Sarjapur clusters'] },
+  '560114': { main:'North Bengaluru rural belt',    sub:['Airport growth corridor'] },
+  '560115': { main:'South Bengaluru rural belt',    sub:['Bannerghatta outskirts'] },
+  '560116': { main:'Kaggalipura',                   sub:['Bolare','Somanhalli','Taralu','Thattekuppe'] }
+};
+
+/* Hand-drawn approximate Bengaluru cardinal zones (lat,lng).
+   Intersected with the Bengaluru polygon at runtime so the final outline
+   follows the city border, not centered sectors. */
+const CARDINAL_POLYGONS_LATLNG = {
+  C: [
+    [13.005,77.575],[13.010,77.605],[13.000,77.625],[12.985,77.640],
+    [12.965,77.642],[12.945,77.640],[12.928,77.625],[12.922,77.605],
+    [12.928,77.580],[12.948,77.563],[12.978,77.560],[13.005,77.575]
+  ],
+  N: [
+    [13.000,77.450],[13.030,77.450],[13.080,77.460],[13.150,77.495],
+    [13.180,77.555],[13.185,77.620],[13.165,77.685],[13.120,77.720],
+    [13.060,77.730],[13.020,77.720],[13.000,77.690],[13.005,77.625],
+    [13.010,77.605],[13.005,77.575],[13.000,77.530],[13.000,77.450]
+  ],
+  S: [
+    [12.928,77.450],[12.928,77.580],[12.922,77.605],[12.928,77.625],
+    [12.910,77.680],[12.870,77.700],[12.825,77.685],[12.795,77.640],
+    [12.785,77.580],[12.795,77.520],[12.820,77.475],[12.860,77.450],
+    [12.900,77.445],[12.928,77.450]
+  ],
+  E: [
+    [13.000,77.625],[13.020,77.665],[13.045,77.715],[13.040,77.770],
+    [13.000,77.810],[12.945,77.820],[12.895,77.815],[12.870,77.785],
+    [12.860,77.740],[12.875,77.700],[12.910,77.680],[12.928,77.625],
+    [12.945,77.640],[12.965,77.642],[12.985,77.640],[13.000,77.625]
+  ],
+  W: [
+    [13.000,77.575],[12.978,77.560],[12.948,77.563],[12.928,77.580],
+    [12.928,77.450],[12.900,77.445],[12.870,77.450],[12.840,77.460],
+    [12.870,77.475],[12.910,77.470],[12.945,77.470],[12.970,77.480],
+    [13.000,77.490],[13.005,77.530],[13.000,77.575]
+  ]
+};
+
+/* Hardcoded approximate Bengaluru BBMP polygon (fallback if Nominatim fails) */
+const BENGALURU_FALLBACK = {
+  type:'Polygon',
+  coordinates:[[
+    [77.460,12.835],[77.500,12.820],[77.560,12.835],[77.620,12.840],[77.680,12.870],
+    [77.730,12.910],[77.760,12.960],[77.785,13.020],[77.780,13.080],[77.745,13.135],
+    [77.690,13.150],[77.620,13.140],[77.560,13.130],[77.510,13.110],[77.470,13.060],
+    [77.450,13.000],[77.445,12.940],[77.450,12.880],[77.460,12.835]
+  ]]
+};
+
+/* ---------- Map ---------- */
+const map = L.map('map', { zoomControl:true, attributionControl:true }).setView(MAP_CENTER, 11);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'&copy; OpenStreetMap &copy; CARTO', subdomains:'abcd', maxZoom:19
+}).addTo(map);
+
+// Suppress the browser context menu over the map so our right-click handlers can run
+map.getContainer().addEventListener('contextmenu', e => e.preventDefault());
+
+const drawnItems = new L.FeatureGroup().addTo(map);
+
+/* ---------- State ---------- */
+let bengaluruGeo = null;        // GeoJSON Polygon for the city
+let bengaluruLayer = null;      // L.GeoJSON for outline
+let zones = new Map();          // id -> Zone instance
+let zoneIdSeq = 1;
+let colorIdx = 0;
+const boundaryCache = new Map();
+const areasCache = new Map();
+const cardinalLayers = { C:null, N:null, S:null, E:null, W:null };
+let allAreasLayer = null;
+let allAreasLoaded = false;
+
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const escapeHTML = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtKm = v => (v||0).toFixed(2);
+const toast = (msg, type='info', ms=3500) => {
+  const el = document.createElement('div'); el.className='toast '+type; el.textContent=msg;
+  $('#toast').appendChild(el); setTimeout(()=>el.remove(), ms);
+};
+const showLoading = t => { $('#loadingText').textContent=t||'Loading…'; $('#loading').classList.add('active'); };
+const hideLoading = () => $('#loading').classList.remove('active');
+
+function modalPrompt({title, help, value=''}) {
+  return new Promise(resolve => {
+    $('#modalTitle').textContent = title;
+    $('#modalHelp').textContent = help || '';
+    $('#modalInput').value = value;
+    $('#modalBg').classList.add('active');
+    $('#modalInput').focus(); $('#modalInput').select();
+    const finish = (val) => {
+      $('#modalBg').classList.remove('active');
+      $('#modalOk').onclick = null; $('#modalCancel').onclick = null;
+      $('#modalInput').onkeydown = null;
+      $('#modalBg').onclick = null;
+      resolve(val);
+    };
+    $('#modalOk').onclick = (e) => { e.stopPropagation(); finish($('#modalInput').value.trim() || null); };
+    $('#modalCancel').onclick = (e) => { e.stopPropagation(); finish(null); };
+    $('#modalBg').onclick = (e) => { if (e.target === $('#modalBg')) finish(null); };
+    $('#modalInput').onkeydown = e => {
+      if (e.key==='Enter') $('#modalOk').click();
+      if (e.key==='Escape') $('#modalCancel').click();
+    };
+  });
+}
+
+/* ---------- API: Nominatim ---------- */
+/* ---- Persistent cache (1-week TTL) so reopening the file paints
+   previously-resolved pincodes instantly. No UI / behavior changes —
+   purely a cache layer in front of Nominatim + Overpass. */
+const LS_BCACHE_KEY = 'pzm_boundary_cache_v1';
+const LS_ACACHE_KEY = 'pzm_areas_cache_v1';
+const LS_CACHE_TTL  = 7 * 24 * 60 * 60 * 1000; // 1 week
+function _loadLSMap(key) {
+  try {
+    const raw = localStorage.getItem(key); if (!raw) return;
+    const obj = JSON.parse(raw); if (!obj || typeof obj !== 'object') return;
+    const now = Date.now();
+    for (const [k, v] of Object.entries(obj)) {
+      if (v && typeof v === 'object' && (now - (v.t || 0)) < LS_CACHE_TTL) {
+        if (key === LS_BCACHE_KEY) boundaryCache.set(k, v.v);
+        else                       areasCache.set(k, v.v);
+      }
+    }
+  } catch(e) { /* ignore corrupt cache */ }
+}
+function _saveLSEntry(key, k, v) {
+  try {
+    const raw = localStorage.getItem(key);
+    const obj = raw ? (JSON.parse(raw) || {}) : {};
+    obj[k] = { t: Date.now(), v };
+    localStorage.setItem(key, JSON.stringify(obj));
+  } catch(e) { /* quota / private mode — ignore */ }
+}
+_loadLSMap(LS_BCACHE_KEY);
+_loadLSMap(LS_ACACHE_KEY);
+
+async function fetchPincodeBoundary(pincode) {
+  if (boundaryCache.has(pincode)) return boundaryCache.get(pincode);
+  const url = `${NOMINATIM}/search?postalcode=${encodeURIComponent(pincode)}&country=India&polygon_geojson=1&format=json&addressdetails=1&limit=5`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Nominatim failed');
+  const data = await res.json();
+  const withPoly = data.find(d => d.geojson && (d.geojson.type==='Polygon' || d.geojson.type==='MultiPolygon'));
+  const chosen = withPoly || data[0] || null;
+  boundaryCache.set(pincode, chosen);
+  _saveLSEntry(LS_BCACHE_KEY, pincode, chosen);
+  return chosen;
+}
+
+async function fetchBengaluruBoundary() {
+  const url = `${NOMINATIM}/search?q=Bengaluru&format=json&polygon_geojson=1&limit=5`;
+  try {
+    const res = await fetch(url); if (!res.ok) throw 0;
+    const data = await res.json();
+    const r = data.find(d => d.geojson && (d.geojson.type==='Polygon' || d.geojson.type==='MultiPolygon'));
+    if (r) return r.geojson;
+  } catch(e) {}
+  return BENGALURU_FALLBACK;
+}
+
+async function reverseGeocode(lat, lng) {
+  const res = await fetch(`${NOMINATIM}/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=16`);
+  if (!res.ok) throw new Error('Reverse geocode failed');
+  return res.json();
+}
+
+/* ---------- API: Overpass ---------- */
+function geojsonToOverpassPoly(geom) {
+  let ring;
+  if (geom.type==='Polygon') ring = geom.coordinates[0];
+  else if (geom.type==='MultiPolygon') ring = geom.coordinates.map(p=>p[0]).sort((a,b)=>b.length-a.length)[0];
+  else return null;
+  if (ring.length>200) {
+    const step = Math.ceil(ring.length/200);
+    ring = ring.filter((_,i)=>i%step===0);
+  }
+  return ring.map(c=>`${c[1]} ${c[0]}`).join(' ');
+}
+
+async function fetchAreasInside(geojson, pincode) {
+  const cacheKey = pincode + '|' + JSON.stringify(geojson).length;
+  if (areasCache.has(cacheKey)) return areasCache.get(cacheKey);
+  const polyStr = geojsonToOverpassPoly(geojson);
+  if (!polyStr) return [];
+  // Two strategies merged: places inside polygon + features tagged with this postcode
+  const q = `[out:json][timeout:25];
+(
+  node["place"~"suburb|neighbourhood|locality|quarter|village|hamlet"](poly:"${polyStr}");
+  node["addr:postcode"="${pincode}"]["name"];
+  way["addr:postcode"="${pincode}"]["name"]["place"];
+);
+out tags center 400;`;
+  try {
+    const res = await fetch(OVERPASS, {method:'POST', body:q});
+    if (!res.ok) return [];
+    const data = await res.json();
+    const names = (data.elements||[]).map(e => e.tags && e.tags.name).filter(Boolean);
+    const unique = [...new Set(names)].sort();
+    areasCache.set(cacheKey, unique);
+    _saveLSEntry(LS_ACACHE_KEY, cacheKey, unique);
+    return unique;
+  } catch(e) { console.warn('Overpass error', e); return []; }
+}
+
+async function fetchAllAreasInBengaluru(geojson) {
+  const polyStr = geojsonToOverpassPoly(geojson);
+  if (!polyStr) return [];
+  const q = `[out:json][timeout:30];
+(
+  node["place"~"suburb|neighbourhood|quarter"](poly:"${polyStr}");
+);
+out tags 1500;`;
+  const res = await fetch(OVERPASS, {method:'POST', body:q});
+  if (!res.ok) throw new Error('Overpass failed');
+  const data = await res.json();
+  return (data.elements||[]).filter(e => e.tags && e.tags.name).map(e => ({
+    lat:e.lat, lng:e.lon, name:e.tags.name, place:e.tags.place, postcode:e.tags['addr:postcode']
+  }));
+}
+
+/* ---------- Stats ---------- */
+function computeZoneStats(geojson) {
+  const feat = turf.feature(geojson);
+  const areaKm2 = turf.area(feat)/1e6;
+  let perimeterKm = 0;
+  const rings = (geojson.type==='Polygon') ? geojson.coordinates : geojson.coordinates.flat();
+  rings.forEach(r => { perimeterKm += turf.length(turf.lineString(r), {units:'kilometers'}); });
+  const centroid = turf.centroid(feat);
+  let maxRadiusKm = 0;
+  rings.forEach(r => r.forEach(([lng,lat]) => {
+    const d = turf.distance(centroid, turf.point([lng,lat]), {units:'kilometers'});
+    if (d>maxRadiusKm) maxRadiusKm=d;
+  }));
+  return { areaKm2, perimeterKm, centroid: centroid.geometry.coordinates, maxRadiusKm };
+}
+
+/* ---------- Zone class ---------- */
+class Zone {
+  constructor({name, components, color}) {
+    this.id = 'z_' + (zoneIdSeq++);
+    this.name = name;
+    this.components = components; // [{pincode, geojson, areas, name}]
+    this.color = color || COLORS[colorIdx++ % COLORS.length];
+    this.selected = false;
+    this.expanded = false;
+    this.editing = false;
+    this.layer = null;
+    this.label = null;
+    this.recompute();
+  }
+  get pincodes() { return this.components.map(c => c.pincode); }
+  get isCombined() { return this.components.length > 1; }
+  get allAreas() {
+    const s = new Set();
+    this.components.forEach(c => (c.areas||[]).forEach(a => s.add(a)));
+    return [...s].sort();
+  }
+  recompute() {
+    let union = turf.feature(this.components[0].geojson);
+    for (let i=1; i<this.components.length; i++) {
+      try { union = turf.union(union, turf.feature(this.components[i].geojson)) || union; } catch(e) {}
+    }
+    this.geojson = union.geometry;
+    this.stats = computeZoneStats(this.geojson);
+  }
+  draw() {
+    if (this.layer) map.removeLayer(this.layer);
+    if (this.label) map.removeLayer(this.label);
+    this.layer = L.geoJSON(this.geojson, {
+      style:{ color:this.color, weight: this.isCombined?3:2, fillOpacity:0.18, fillColor:this.color, dashArray: this.isCombined?'6 4':null }
+    }).addTo(map);
+    const pinDisplay = this.pincodes.length>2 ? `${this.pincodes.length} pincodes` : this.pincodes.join(' + ');
+    this.label = L.marker([this.stats.centroid[1], this.stats.centroid[0]], {
+      icon: L.divIcon({
+        className:'zone-label',
+        html: `<div><span class="pin">${escapeHTML(pinDisplay)}</span><br/>${escapeHTML(this.name)}</div>`,
+        iconSize:[140,32], iconAnchor:[70,16]
+      }),
+      interactive:false
+    }).addTo(map);
+  }
+  remove() {
+    if (this.layer) map.removeLayer(this.layer);
+    if (this.label) map.removeLayer(this.label);
+  }
+}
+
+/* ---------- Zone management ---------- */
+async function loadComponentForPincode(pincode) {
+  const result = await fetchPincodeBoundary(pincode);
+  if (!result || !result.geojson || (result.geojson.type!=='Polygon' && result.geojson.type!=='MultiPolygon')) {
+    throw new Error(`No polygon boundary for ${pincode}`);
+  }
+  const addr = result.address || {};
+  const dir = PINCODE_AREAS[pincode];
+  // Main area name: prefer the curated directory; fall back to OSM
+  const mainArea = dir ? dir.main
+    : (addr.suburb || addr.neighbourhood || addr.city_district || addr.county || addr.state_district || addr.city || (result.display_name||'').split(',')[0] || pincode);
+  const tableSubs = dir ? [...dir.sub] : [];
+  // Pull OSM areas inside the polygon to enrich the curated list
+  const osmAreas = await fetchAreasInside(result.geojson, pincode);
+  // Merge case-insensitively
+  const seen = new Set();
+  const areas = [];
+  [...tableSubs, ...osmAreas].forEach(a => {
+    const k = String(a).toLowerCase().trim();
+    if (k && !seen.has(k)) { seen.add(k); areas.push(a); }
+  });
+  return { pincode, geojson: result.geojson, areas, mainArea, name: mainArea };
+}
+
+async function addZone(pincode, customName=null) {
+  pincode = String(pincode).trim();
+  if (!/^\d{6}$/.test(pincode)) { toast('Enter a valid 6-digit pincode', 'error'); return; }
+  for (const z of zones.values()) {
+    if (z.pincodes.includes(pincode) && !z.isCombined) { toast(`Pincode ${pincode} already added`, 'warn'); return; }
+  }
+  // If everything for this pincode is already in cache (from a previous
+  // session, persisted to localStorage), skip the loading flash so the
+  // click feels instant.
+  const cachedBoundary = boundaryCache.get(pincode);
+  const cachedAreasKey = cachedBoundary && cachedBoundary.geojson
+    ? (pincode + '|' + JSON.stringify(cachedBoundary.geojson).length) : null;
+  const fullyCached = !!cachedBoundary && cachedAreasKey && areasCache.has(cachedAreasKey);
+  if (!fullyCached) showLoading(`Fetching boundary for ${pincode}…`);
+  let comp;
+  try { comp = await loadComponentForPincode(pincode); }
+  catch(e) { hideLoading(); toast(e.message, 'error'); return; }
+  const zone = new Zone({ name: customName || comp.name || pincode, components:[comp] });
+  zones.set(zone.id, zone);
+  zone.draw();
+  hideLoading();
+  renderZoneList(); updateHeader(); recomputeCombined();
+  map.fitBounds(zone.layer.getBounds(), { padding:[40,40], maxZoom:14 });
+  toast(`Added ${zone.name} (${pincode}) — ${comp.areas.length} areas`, 'success');
+}
+
+async function combineSelected() {
+  try {
+    const sel = [...zones.values()].filter(z => z.selected);
+    if (sel.length < 2) { toast('Tick at least 2 zones to combine', 'warn'); return; }
+    const defaultName = sel.map(z => z.name).join(' + ');
+    const name = await modalPrompt({
+      title:'Combine into one zone',
+      help:`Combining ${sel.length} zones / ${[...new Set(sel.flatMap(z=>z.pincodes))].length} pincodes. Originals will be removed.`,
+      value: defaultName
+    });
+    if (!name) return;
+    // Flatten components, dedup by pincode
+    const seen = new Set();
+    const components = [];
+    sel.forEach(z => z.components.forEach(c => {
+      if (!seen.has(c.pincode)) { seen.add(c.pincode); components.push(c); }
+    }));
+    if (components.length < 2) { toast('Need at least 2 distinct pincodes', 'warn'); return; }
+    const zone = new Zone({ name, components });
+    zones.set(zone.id, zone);
+    zone.draw();
+    // Remove the originals so the user sees a clean single combined zone
+    sel.forEach(z => { z.remove(); zones.delete(z.id); });
+    renderZoneList(); updateHeader(); recomputeCombined();
+    map.fitBounds(zone.layer.getBounds(), { padding:[40,40] });
+    toast(`Combined zone "${name}" created (${components.length} pincodes)`, 'success');
+  } catch (err) {
+    console.error('Combine failed:', err);
+    toast('Combine failed: ' + err.message, 'error');
+  }
+}
+
+function removeZone(id) {
+  const z = zones.get(id); if (!z) return;
+  z.remove(); zones.delete(id);
+  renderZoneList(); updateHeader(); recomputeCombined();
+}
+
+function clearAllZones() {
+  for (const id of [...zones.keys()]) removeZone(id);
+}
+
+function toggleSelect(id) {
+  const z = zones.get(id); if (!z) return;
+  z.selected = !z.selected;
+  renderZoneList(); updateHeader(); recomputeCombined();
+}
+
+function toggleExpand(id) {
+  const z = zones.get(id); if (!z) return;
+  z.expanded = !z.expanded; renderZoneList();
+}
+
+function startEdit(id) {
+  zones.forEach(z => z.editing = false);
+  const z = zones.get(id); if (!z) return;
+  z.editing = true; renderZoneList();
+}
+
+function saveEdit(id, newName, newColor) {
+  const z = zones.get(id); if (!z) return;
+  z.name = newName.trim() || z.name;
+  z.color = newColor || z.color;
+  z.editing = false;
+  z.draw();
+  renderZoneList();
+  toast('Zone updated', 'success', 1500);
+}
+
+/* ---------- Rendering ---------- */
+function renderZoneList() {
+  const list = $('#zoneList');
+  if (zones.size===0) { list.innerHTML = '<div class="empty">No zones yet. Create one above.</div>'; return; }
+  list.innerHTML = '';
+  for (const z of zones.values()) {
+    const within = z.stats.maxRadiusKm <= 10;
+    const card = document.createElement('div');
+    card.className = 'zone-card' + (z.selected?' selected':'') + (z.expanded?' expanded':'') + (z.isCombined?' combined':'');
+    const pinsLine = z.pincodes.length>3 ? `${z.pincodes.length} pincodes` : z.pincodes.join(' • ');
+    card.innerHTML = `
+      <div class="zhead">
+        <input type="checkbox" ${z.selected?'checked':''} title="Select to combine" />
+        <span class="swatch" style="background:${z.color}"></span>
+        <span class="zname-wrap">
+          <span class="zname">${escapeHTML(z.name)}${z.isCombined?' <span class="badge warn" style="font-size:9px">COMBINED</span>':''}</span>
+          <span class="zpins">${escapeHTML(pinsLine)}</span>
+        </span>
+        <span class="zactions">
+          <button class="icon-btn" data-action="zoom" title="Zoom">⌖</button>
+          <button class="icon-btn" data-action="edit" title="Edit">✎</button>
+          <button class="icon-btn" data-action="expand" title="Areas">${z.expanded?'▾':'▸'}</button>
+          <button class="icon-btn" data-action="delete" title="Delete">✕</button>
+        </span>
+      </div>
+      ${z.editing ? `
+        <div class="edit-form">
+          <div class="row">
+            <input type="color" value="${z.color}" id="ec_${z.id}" />
+            <input type="text" value="${escapeHTML(z.name)}" id="en_${z.id}" placeholder="Zone name" />
+          </div>
+          <div class="row">
+            <button data-action="save">Save</button>
+            <button class="ghost" data-action="cancelEdit">Cancel</button>
+          </div>
+        </div>
+      ` : ''}
+      <div class="stats">
+        <span>Pincodes: <b>${z.pincodes.length}</b></span>
+        <span>Areas: <b>${z.allAreas.length}</b></span>
+        <span>Area: <b>${fmtKm(z.stats.areaKm2)} km²</b></span>
+        <span>Perimeter: <b>${fmtKm(z.stats.perimeterKm)} km</b></span>
+        <span>Center→edge: <b>${fmtKm(z.stats.maxRadiusKm)} km</b></span>
+        <span><span class="badge ${within?'good':'warn'}">${within?'Within 10 km ✓':'Exceeds 10 km'}</span></span>
+      </div>
+      <div class="areas-block">
+        ${z.components.map(c => {
+          const dir = PINCODE_AREAS[c.pincode];
+          const main = c.mainArea || c.name || (dir ? dir.main : c.pincode);
+          return `
+          <div class="pin-group">
+            <div class="pin-head">${escapeHTML(c.pincode)} <span style="color:var(--text-1);text-transform:none;font-weight:700;letter-spacing:0">— ${escapeHTML(main)}</span></div>
+            <div>${ (c.areas||[]).length
+              ? c.areas.map(a => `<span class="area-tag">${escapeHTML(a)}</span>`).join('')
+              : '<i style="color:var(--text-3)">No mapped sub-areas found.</i>' }</div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+    // Wire up events
+    card.querySelector('input[type=checkbox]').addEventListener('change', e => { e.stopPropagation(); toggleSelect(z.id); });
+    card.querySelectorAll('.icon-btn').forEach(b => b.addEventListener('click', e => {
+      e.stopPropagation();
+      const a = b.dataset.action;
+      if (a==='zoom') map.fitBounds(z.layer.getBounds(),{padding:[40,40],maxZoom:14});
+      if (a==='expand') toggleExpand(z.id);
+      if (a==='delete') removeZone(z.id);
+      if (a==='edit') startEdit(z.id);
+    }));
+    if (z.editing) {
+      card.querySelector('[data-action=save]').addEventListener('click', () => {
+        saveEdit(z.id, $('#en_'+z.id).value, $('#ec_'+z.id).value);
+      });
+      card.querySelector('[data-action=cancelEdit]').addEventListener('click', () => {
+        z.editing=false; renderZoneList();
+      });
+    }
+    list.appendChild(card);
+  }
+}
+
+function updateHeader() {
+  $('#hdrZones').textContent = zones.size;
+  const sel = [...zones.values()].filter(z => z.selected).length;
+  $('#hdrSelected').textContent = sel;
+  const btn = $('#combineBtn');
+  btn.textContent = `⤓ Combine ${sel} selected zones into 1`;
+  btn.style.display = sel >= 2 ? 'block' : 'none';
+}
+
+let combinedPreviewLayer = null;
+let combinedPreviewMarker = null;
+function recomputeCombined() {
+  const sel = [...zones.values()].filter(z => z.selected);
+  const sec = $('#combinedSection');
+  if (combinedPreviewLayer) { map.removeLayer(combinedPreviewLayer); combinedPreviewLayer=null; }
+  if (combinedPreviewMarker) { map.removeLayer(combinedPreviewMarker); combinedPreviewMarker=null; }
+  if (sel.length < 2) { sec.style.display='none'; return; }
+  sec.style.display='';
+  // Union all selected geometries
+  let union = turf.feature(sel[0].geojson);
+  for (let i=1; i<sel.length; i++) { try { union = turf.union(union, turf.feature(sel[i].geojson)) || union; } catch(e){} }
+  const stats = computeZoneStats(union.geometry);
+  const allPin = [...new Set(sel.flatMap(z => z.pincodes))];
+  const allAreas = [...new Set(sel.flatMap(z => z.allAreas))].sort();
+  $('#cPin').textContent = allPin.length;
+  $('#cAreas').textContent = allAreas.length;
+  $('#cArea').innerHTML = `${fmtKm(stats.areaKm2)} <small>km²</small>`;
+  $('#cRad').innerHTML = `${fmtKm(stats.maxRadiusKm)} <small>km</small>`;
+  const within = stats.maxRadiusKm <= 10;
+  const wb = $('#cWithin');
+  wb.textContent = within ? `Yes — within 10 km ✓` : `No — extends ${fmtKm(stats.maxRadiusKm)} km`;
+  wb.className = 'badge '+(within?'good':'warn');
+  $('#cAreaList').innerHTML = allAreas.length
+    ? allAreas.map(a => `<span class="area-tag">${escapeHTML(a)}</span>`).join('')
+    : '<i style="color:var(--text-3)">No areas found in selected zones.</i>';
+  combinedPreviewLayer = L.geoJSON(union, { style:{ color:'#ffb74c', weight:3, dashArray:'6 4', fill:false } }).addTo(map);
+  combinedPreviewMarker = L.circleMarker([stats.centroid[1], stats.centroid[0]], {
+    radius:7, color:'#ffb74c', weight:2, fillColor:'#ffb74c', fillOpacity:1
+  }).bindTooltip('Combined center', {permanent:false}).addTo(map);
+}
+
+/* ---------- Cardinal Zones (Central / N / S / E / W) ---------- */
+function sectorPolygon(centerCoord, radiusKm, startBearing, endBearing, steps=64) {
+  const center = turf.point(centerCoord);
+  const coords = [center.geometry.coordinates];
+  let s = startBearing, e = endBearing;
+  if (e <= s) e += 360;
+  for (let i=0; i<=steps; i++) {
+    const a = s + (e-s)*i/steps;
+    coords.push(turf.destination(center, radiusKm, a > 180 ? a - 360 : a, {units:'kilometers'}).geometry.coordinates);
+  }
+  coords.push(center.geometry.coordinates);
+  return turf.polygon([coords]);
+}
+
+function buildCardinalZones() {
+  const cityFeat = turf.feature(bengaluruGeo);
+  // Convert lat,lng arrays to GeoJSON polygons (lng,lat ordering)
+  const raw = {};
+  for (const [k, coords] of Object.entries(CARDINAL_POLYGONS_LATLNG)) {
+    raw[k] = turf.polygon([coords.map(c => [c[1], c[0]])]);
+  }
+  const out = {};
+  // Central first; clip to city
+  try { out.C = turf.intersect(raw.C, cityFeat) || raw.C; } catch(e) { out.C = raw.C; }
+  // Build N/S/E/W: clip to city, then subtract anything already claimed (so they never overlap)
+  let occupied = out.C;
+  for (const k of ['N','S','E','W']) {
+    let z = raw[k];
+    try { z = turf.intersect(z, cityFeat) || z; } catch(e) {}
+    try { z = turf.difference(z, occupied) || z; } catch(e) {}
+    out[k] = z;
+    try { occupied = turf.union(occupied, z) || occupied; } catch(e) {}
+  }
+  return out;
+}
+
+let cardinalZonesGeo = null;
+function showCardinalZone(key, on) {
+  if (!cardinalZonesGeo) cardinalZonesGeo = buildCardinalZones();
+  if (on) {
+    if (cardinalLayers[key]) return;
+    const colors = { C:getCSS('--zC'), N:getCSS('--zN'), S:getCSS('--zS'), E:getCSS('--zE'), W:getCSS('--zW') };
+    const labels = { C:'Central', N:'North', S:'South', E:'East', W:'West' };
+    const f = cardinalZonesGeo[key];
+    const lyr = L.geoJSON(f, { style:{ color:colors[key], weight:2, fillOpacity:0.12, fillColor:colors[key] } }).addTo(map);
+    // Label at centroid
+    try {
+      const c = turf.centroid(f).geometry.coordinates;
+      const lbl = L.marker([c[1],c[0]], {
+        icon:L.divIcon({className:'zone-label', html:`<div style="font-size:13px">${labels[key]}<br/><span class="pin" style="color:${colors[key]}">${labels[key].toUpperCase()} ZONE</span></div>`, iconSize:[120,30], iconAnchor:[60,15]}),
+        interactive:false
+      }).addTo(map);
+      lyr._label = lbl;
+    } catch(e) {}
+    cardinalLayers[key] = lyr;
+  } else {
+    if (!cardinalLayers[key]) return;
+    if (cardinalLayers[key]._label) map.removeLayer(cardinalLayers[key]._label);
+    map.removeLayer(cardinalLayers[key]);
+    cardinalLayers[key] = null;
+  }
+}
+function getCSS(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+/* ---------- All Areas overlay ---------- */
+async function showAllAreas(on) {
+  if (!on) { if (allAreasLayer) { map.removeLayer(allAreasLayer); allAreasLayer=null; } return; }
+  if (allAreasLayer) return;
+  showLoading('Loading suburbs across Bengaluru…');
+  try {
+    const items = await fetchAllAreasInBengaluru(bengaluruGeo);
+    allAreasLoaded = true;
+    allAreasLayer = L.layerGroup();
+    items.forEach(it => {
+      const m = L.circleMarker([it.lat, it.lng], {
+        radius: it.place==='suburb'?4:3, color:'#4cc9ff', weight:1, fillColor:'#4cc9ff', fillOpacity:.85
+      });
+      m.bindTooltip(it.name, { className:'area-marker-label', direction:'top', offset:[0,-4] });
+      m.on('click', async () => {
+        let pin = it.postcode;
+        if (!pin) {
+          try { const r = await reverseGeocode(it.lat, it.lng); pin = r.address?.postcode || '—'; } catch(e){ pin='—'; }
+        }
+        L.popup().setLatLng([it.lat,it.lng]).setContent(`
+          <b>${escapeHTML(it.name)}</b><br/>
+          Pincode: <b>${escapeHTML(pin)}</b><br/>
+          ${pin!=='—' ? `<button onclick="window.__addZoneFromPopup('${pin}')">+ Add ${escapeHTML(pin)} as zone</button>` : ''}
+        `).openOn(map);
+      });
+      allAreasLayer.addLayer(m);
+    });
+    allAreasLayer.addTo(map);
+    toast(`Loaded ${items.length} areas`, 'success');
+  } catch(e) {
+    toast('Failed to load areas: '+e.message, 'error');
+    document.getElementById('tglAllAreas').checked = false;
+  } finally { hideLoading(); }
+}
+window.__addZoneFromPopup = (p) => addZone(p);
+
+/* ---------- Map click → reverse geocode ---------- */
+map.on('click', async (ev) => {
+  if (measureTool.active) return;
+  if (drawingActive) return;
+  const { lat, lng } = ev.latlng;
+  L.popup().setLatLng(ev.latlng).setContent('<i>Looking up…</i>').openOn(map);
+  $('#clickInfo').innerHTML = `<i style="color:var(--text-3)">Looking up ${lat.toFixed(4)}, ${lng.toFixed(4)}…</i>`;
+  try {
+    const data = await reverseGeocode(lat, lng);
+    const a = data.address || {};
+    const osmArea = a.suburb || a.neighbourhood || a.quarter || a.village || a.town || a.city_district || a.locality || '—';
+    const pin = a.postcode || '—';
+    const city = a.city || a.town || a.state_district || '';
+    const dir = PINCODE_AREAS[pin];
+    const main = dir ? dir.main : osmArea;
+    const subs = dir ? dir.sub : [];
+    const subsHtml = subs.length
+      ? `<div style="margin-top:6px"><b style="color:var(--text-2);font-size:11px">Sub-areas:</b><br/>${subs.map(s=>`<span style="display:inline-block;background:var(--bg-3);padding:2px 6px;margin:2px;border-radius:3px;font-size:11px">${escapeHTML(s)}</span>`).join('')}</div>`
+      : '';
+    map.openPopup(`
+      <b>Area:</b> ${escapeHTML(osmArea)}<br/>
+      <b>Pincode:</b> ${escapeHTML(pin)}<br/>
+      ${dir ? `<b>Main:</b> ${escapeHTML(main)}<br/>` : ''}
+      ${city ? `<b>City:</b> ${escapeHTML(city)}<br/>` : ''}
+      ${subsHtml}
+      ${pin!=='—' ? `<button type="button" onclick="window.__addZoneFromPopup('${pin}')">+ Add ${escapeHTML(pin)} as zone</button>` : ''}
+    `, ev.latlng);
+    $('#clickInfo').innerHTML = `
+      <div><b style="color:var(--accent)">${escapeHTML(osmArea)}</b></div>
+      <div>Pincode: <b>${escapeHTML(pin)}</b></div>
+      ${dir ? `<div>Main area: <b>${escapeHTML(main)}</b></div>` : ''}
+      ${city?`<div>City: ${escapeHTML(city)}</div>`:''}
+      ${subs.length ? `<div style="margin-top:6px"><span style="color:var(--text-3);font-size:11px">Sub-areas:</span><br/>${subs.map(s=>`<span class="area-tag">${escapeHTML(s)}</span>`).join('')}</div>` : ''}
+    `;
+  } catch(e) { map.openPopup('<i>Lookup failed</i>', ev.latlng); }
+});
+
+/* ---------- Geofence drawing ---------- */
+let drawer = null;
+let drawingActive = false;
+function setActiveTool(btnId) {
+  ['toolMeasure','toolDrawPoly','toolDrawCircle'].forEach(id => $('#'+id).classList.toggle('active', id===btnId));
+}
+function clearActiveTool() { setActiveTool(null); }
+
+function startDraw(kind) {
+  if (drawer) drawer.disable();
+  drawingActive = true;
+  measureTool.stop();
+  const opt = { shapeOptions:{ color:'#ff8a4c', weight:2, fillOpacity:0.15 } };
+  drawer = (kind==='polygon') ? new L.Draw.Polygon(map, opt) : new L.Draw.Circle(map, opt);
+  drawer.enable();
+  setActiveTool(kind==='polygon'?'toolDrawPoly':'toolDrawCircle');
+}
+
+map.on(L.Draw.Event.CREATED, (e) => {
+  const layer = e.layer;
+  drawnItems.addLayer(layer);
+  let stats;
+  if (e.layerType==='circle') {
+    const r = layer.getRadius()/1000;
+    stats = { areaKm2: Math.PI*r*r, perimeterKm: 2*Math.PI*r, maxRadiusKm: r };
+  } else {
+    const gj = layer.toGeoJSON();
+    stats = computeZoneStats(gj.geometry);
+  }
+  const within = stats.maxRadiusKm<=10;
+  layer.bindPopup(`
+    <b>Geofence</b><br/>
+    Area: <b>${fmtKm(stats.areaKm2)} km²</b><br/>
+    Perimeter: <b>${fmtKm(stats.perimeterKm||0)} km</b><br/>
+    Max radius: <b>${fmtKm(stats.maxRadiusKm)} km</b> <span class="badge ${within?'good':'warn'}">${within?'≤ 10 km':'> 10 km'}</span>
+  `).openPopup();
+  drawingActive = false; clearActiveTool();
+});
+map.on(L.Draw.Event.DRAWSTOP, () => { drawingActive=false; clearActiveTool(); });
+
+/* ---------- Measure Tool (Google-Maps style, draggable + right-click delete) ---------- */
+const measureTool = {
+  active: false,
+  points: [],            // L.marker[] — each draggable
+  segmentLayer: L.layerGroup(),
+  _onClick: null, _onDbl: null,
+
+  _icon() {
+    return L.divIcon({ className:'measure-point', html:'<div></div>', iconSize:[14,14], iconAnchor:[7,7] });
+  },
+
+  start() {
+    if (drawingActive) { drawer && drawer.disable(); drawingActive = false; }
+    this.active = true;
+    map.getContainer().style.cursor = 'crosshair';
+    map.doubleClickZoom.disable();
+    if (!map.hasLayer(this.segmentLayer)) this.segmentLayer.addTo(map);
+    this._onClick = (ev) => {
+      // ignore right-click pseudo-events
+      if (ev.originalEvent && ev.originalEvent.button === 2) return;
+      this.addPoint(ev.latlng);
+    };
+    this._onDbl = () => this.stop();
+    map.on('click', this._onClick);
+    map.on('dblclick', this._onDbl);
+    $('#measureSection').style.display = '';
+    this.updateInfo('Click points on the map to measure. <b>Drag</b> any point to adjust • <b>Right-click</b> a point to remove it • <b>Right-click</b> a line to delete the whole measurement.');
+    setActiveTool('toolMeasure');
+  },
+
+  stop() {
+    if (!this.active) return;
+    this.active = false;
+    map.getContainer().style.cursor = '';
+    if (this._onClick) map.off('click', this._onClick);
+    if (this._onDbl) map.off('dblclick', this._onDbl);
+    setTimeout(() => map.doubleClickZoom.enable(), 100);
+    clearActiveTool();
+    if (this.points.length === 0) $('#measureSection').style.display = 'none';
+  },
+
+  addPoint(latlng) {
+    const marker = L.marker(latlng, {
+      icon: this._icon(),
+      draggable: true,
+      autoPan: true,
+      zIndexOffset: 1000
+    }).addTo(map);
+
+    marker.on('drag', () => this.rebuild());
+    marker.on('contextmenu', (e) => {
+      L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e);
+      const idx = this.points.indexOf(marker);
+      if (idx >= 0) this.removePoint(idx);
+    });
+    this.points.push(marker);
+    this.rebuild();
+  },
+
+  removePoint(idx) {
+    if (idx < 0 || idx >= this.points.length) return;
+    const m = this.points.splice(idx, 1)[0];
+    map.removeLayer(m);
+    this.rebuild();
+    if (this.points.length === 0) {
+      $('#measureSection').style.display = 'none';
+      this.stop();
+    }
+  },
+
+  rebuild() {
+    this.segmentLayer.clearLayers();
+    let total = 0;
+    const segments = [];
+    for (let i = 1; i < this.points.length; i++) {
+      const a = this.points[i-1].getLatLng();
+      const b = this.points[i].getLatLng();
+      const seg = a.distanceTo(b) / 1000;
+      total += seg;
+      segments.push(seg);
+      const line = L.polyline([a, b], { color:'#ffb74c', weight:3, dashArray:'4 4' });
+      line.on('contextmenu', (e) => {
+        L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e);
+        // Right-click on a segment line deletes the whole measurement
+        this.clear();
+      });
+      this.segmentLayer.addLayer(line);
+      const mid = L.latLng((a.lat + b.lat)/2, (a.lng + b.lng)/2);
+      const lbl = L.marker(mid, {
+        icon: L.divIcon({ className:'measure-label', html:`<div class="measure-tip">${seg.toFixed(2)} km</div>`, iconSize:[60,18], iconAnchor:[30,9] }),
+        interactive: false
+      });
+      this.segmentLayer.addLayer(lbl);
+    }
+    this.updateInfo(this._statsHtml(total, segments));
+  },
+
+  _statsHtml(total, segs) {
+    const segHtml = segs.length
+      ? `<div style="margin-top:4px;font-size:11px;color:var(--text-3)">Segments: ${segs.map((s,i)=>`<span class="area-tag">${i+1}: ${s.toFixed(2)} km</span>`).join('')}</div>`
+      : '';
+    return `
+      <div>Points: <b>${this.points.length}</b></div>
+      <div>Total distance: <b style="color:var(--accent);font-size:14px">${total.toFixed(2)} km</b></div>
+      ${segHtml}
+      <div style="margin-top:6px;font-size:11px;color:var(--text-3)">Drag points to adjust • Right-click point to remove • Right-click line to delete all</div>
+    `;
+  },
+
+  updateInfo(html) { $('#measureInfo').innerHTML = html; },
+
+  clear() {
+    this.points.forEach(m => map.removeLayer(m));
+    this.points = [];
+    this.segmentLayer.clearLayers();
+    $('#measureInfo').innerHTML = '';
+    $('#measureSection').style.display = 'none';
+    this.stop();
+  }
+};
+
+/* ---------- Wiring ---------- */
+$('#addZoneBtn').addEventListener('click', () => {
+  const p = $('#pinInput').value, n = $('#nameInput').value.trim() || null;
+  addZone(p, n);
+  $('#pinInput').value=''; $('#nameInput').value='';
+});
+$('#pinInput').addEventListener('keydown', e => { if (e.key==='Enter') $('#addZoneBtn').click(); });
+$('#nameInput').addEventListener('keydown', e => { if (e.key==='Enter') $('#addZoneBtn').click(); });
+$('#clearAllBtn').addEventListener('click', clearAllZones);
+$('#combineBtn').addEventListener('click', combineSelected);
+
+$('#tglBengaluru').addEventListener('change', e => {
+  if (e.target.checked) bengaluruLayer && bengaluruLayer.addTo(map);
+  else bengaluruLayer && map.removeLayer(bengaluruLayer);
+});
+
+$('#tglAllZones').addEventListener('change', e => {
+  const on = e.target.checked;
+  ['C','N','S','E','W'].forEach(k => {
+    const cb = document.querySelector(`.zoneToggle[data-zone="${k}"]`);
+    cb.checked = on; showCardinalZone(k, on);
+  });
+});
+$$('.zoneToggle').forEach(cb => cb.addEventListener('change', e => {
+  showCardinalZone(e.target.dataset.zone, e.target.checked);
+  // master toggle reflects state
+  const allOn = $$('.zoneToggle').every(c => c.checked);
+  $('#tglAllZones').checked = allOn;
+}));
+
+$('#tglAllAreas').addEventListener('change', e => showAllAreas(e.target.checked));
+
+$('#toolMeasure').addEventListener('click', () => {
+  if (measureTool.active) { measureTool.stop(); }
+  else measureTool.start();
+});
+$('#toolDrawPoly').addEventListener('click', () => startDraw('polygon'));
+$('#toolDrawCircle').addEventListener('click', () => startDraw('circle'));
+$('#toolClear').addEventListener('click', () => {
+  drawnItems.clearLayers();
+  measureTool.clear();
+  toast('Drawings cleared', 'info', 1500);
+});
+
+$('#measureFinishBtn').addEventListener('click', () => measureTool.stop());
+$('#measureClearBtn').addEventListener('click', () => measureTool.clear());
+
+/* Instant press-feedback: highlight the tool button on pointerdown
+   (1 frame earlier than the click handler) so the click feels instant
+   even when the click handler kicks off async work. The existing
+   .active styling does the visual work — no UI changes. */
+['toolMeasure','toolDrawPoly','toolDrawCircle','toolClear'].forEach(id => {
+  const btn = $('#'+id);
+  if (!btn) return;
+  btn.addEventListener('pointerdown', () => btn.classList.add('active'));
+  // The actual click handlers above call setActiveTool(...) which decides
+  // the final state; this listener just gives instant visual feedback
+  // on press. Release/blur will be reconciled by setActiveTool.
+});
+
+/* ---------- Init ---------- */
+(async () => {
+  // Paint the Bengaluru outline IMMEDIATELY from the bundled fallback so
+  // the map looks done in <50ms after opening the file. The real OSM
+  // polygon (when Nominatim responds) silently upgrades the outline in
+  // the background — no UI changes, no behavior changes.
+  bengaluruGeo = BENGALURU_FALLBACK;
+  bengaluruLayer = L.geoJSON(bengaluruGeo, {
+    style:{ color:'#4cc9ff', weight:2, fillOpacity:0.04, fillColor:'#4cc9ff', dashArray:'2 4' },
+    interactive:false
+  }).addTo(map);
+  map.fitBounds(bengaluruLayer.getBounds(), { padding:[20,20] });
+  toast('Tip: try pincode 560032 (RT Nagar), 560094 (Sanjaynagar), or click anywhere on the map.', 'info', 6000);
+
+  // Background: upgrade to the real OSM boundary if/when Nominatim responds.
+  fetchBengaluruBoundary().then(real => {
+    if (!real || real === BENGALURU_FALLBACK) return;
+    bengaluruGeo = real;
+    const wasVisible = bengaluruLayer && map.hasLayer(bengaluruLayer);
+    if (bengaluruLayer) map.removeLayer(bengaluruLayer);
+    bengaluruLayer = L.geoJSON(bengaluruGeo, {
+      style:{ color:'#4cc9ff', weight:2, fillOpacity:0.04, fillColor:'#4cc9ff', dashArray:'2 4' },
+      interactive:false
+    });
+    const tgl = $('#tglBengaluru');
+    if (wasVisible || (tgl && tgl.checked)) bengaluruLayer.addTo(map);
+  }).catch(()=>{});
+})();
+</script>
+</body>
+</html>
